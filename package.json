@@ -1,10 +1,10 @@
 {
   "name": "@bagsfm/bags-cli",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "CLI for Bags API and SDK workflows — auth, trading, launches, fees, and config",
   "type": "module",
   "bin": {
-    "bags": "./dist/index.js"
+    "bags": "dist/index.js"
   },
   "files": [
     "dist"
@@ -31,7 +31,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/bagsfm/bags-cli.git"
+    "url": "git+https://github.com/bagsfm/bags-cli.git"
   },
   "homepage": "https://github.com/bagsfm/bags-cli#readme",
   "bugs": {

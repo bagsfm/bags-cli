@@ -18,7 +18,7 @@ const program = new Command();
 program
   .name("bags")
   .description("Bags CLI - auth, trading, launches, fees, and config")
-  .version("0.1.0")
+  .version("0.1.2")
   .option("--json", "Output machine-readable JSON where supported");
 
 registerSetupCommand(program);

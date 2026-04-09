@@ -1,5 +1,11 @@
 # @bagsfm/bags-cli
 
+[![npm version](https://badge.fury.io/js/@bagsfm%2Fbags-cli.svg)](https://badge.fury.io/js/@bagsfm%2Fbags-cli)
+[![npm downloads](https://img.shields.io/npm/dm/@bagsfm/bags-cli.svg)](https://www.npmjs.com/package/@bagsfm/bags-cli)
+[![license](https://img.shields.io/npm/l/@bagsfm/bags-cli.svg)](https://github.com/bagsfm/bags-cli/blob/main/LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Solana](https://img.shields.io/badge/Solana-9945FF?logo=solana&logoColor=white)](https://solana.com/)
+
 CLI for Bags authentication, trading, launches, fees, and configuration.
 
 ## Install
