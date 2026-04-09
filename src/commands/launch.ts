@@ -12,10 +12,19 @@ import { flagOrPrompt, flagOrPromptNumber, optionalFlagOrPrompt, promptConfirm, 
 import { getSdkContext } from "../lib/sdk.js";
 import { getLocalSigner } from "../lib/signer.js";
 import { signAndSend } from "../lib/tx.js";
+import chalk from "chalk";
+import { confirm, input, select } from "@inquirer/prompts";
+import { shortAddress } from "../utils/format.js";
+
+const SOCIAL_PROVIDERS = ["twitter", "github", "kick", "tiktok"] as const;
+type SocialProvider = (typeof SOCIAL_PROVIDERS)[number];
+const MAX_CLAIMERS = 100;
+const TOTAL_BPS = 10000;
 
 type FeeClaimerInput = {
-  provider: "twitter" | "github" | "kick";
-  username: string;
+  provider?: SocialProvider;
+  username?: string;
+  wallet?: string;
   bps: number;
 };
 
@@ -80,6 +89,93 @@ function parseFeeClaimers(raw?: string): FeeClaimerInput[] {
   return parsed;
 }
 
+function printClaimerSummary(claimers: FeeClaimerInput[]): void {
+  const usedBps = claimers.reduce((s, c) => s + c.bps, 0);
+  console.log(chalk.dim("\n  Fee claimers:"));
+  claimers.forEach((c, i) => {
+    const label = c.wallet
+      ? `wallet:${shortAddress(c.wallet)}`
+      : `${c.provider}:${c.username}`;
+    console.log(`    ${i + 1}. ${label.padEnd(28)} ${(c.bps / 100).toFixed(2)}%`);
+  });
+  console.log(chalk.dim(`  Creator keeps: ${((TOTAL_BPS - usedBps) / 100).toFixed(2)}%\n`));
+}
+
+async function buildFeeClaimersInteractive(): Promise<FeeClaimerInput[]> {
+  const shareFees = await confirm({ message: "Share fees with others?", default: false });
+  if (!shareFees) {
+    return [];
+  }
+
+  const claimers: FeeClaimerInput[] = [];
+  let usedBps = 0;
+
+  while (claimers.length < MAX_CLAIMERS && usedBps < TOTAL_BPS) {
+    const remaining = TOTAL_BPS - usedBps;
+    console.log(chalk.dim(`\n  Adding fee claimer ${claimers.length + 1}/${MAX_CLAIMERS} (${remaining} BPS remaining)`));
+
+    const type = await select({
+      message: "Claimer type:",
+      choices: [
+        { name: "Social media account", value: "social" as const },
+        { name: "Direct wallet address", value: "wallet" as const },
+      ],
+    });
+
+    let claimer: FeeClaimerInput;
+
+    if (type === "social") {
+      const provider = await select({
+        message: "Platform:",
+        choices: SOCIAL_PROVIDERS.map((p) => ({ name: p, value: p })),
+      });
+      const username = await input({ message: "Username:" });
+      if (!username.trim()) {
+        throw new Error("Username is required.");
+      }
+      const bps = await inputBps(remaining);
+      claimer = { provider, username: username.trim(), bps };
+    } else {
+      const wallet = await input({ message: "Wallet address:" });
+      if (!wallet.trim()) {
+        throw new Error("Wallet address is required.");
+      }
+      new PublicKey(wallet.trim());
+      const bps = await inputBps(remaining);
+      claimer = { wallet: wallet.trim(), bps };
+    }
+
+    claimers.push(claimer);
+    usedBps += claimer.bps;
+    printClaimerSummary(claimers);
+
+    if (claimers.length >= MAX_CLAIMERS || usedBps >= TOTAL_BPS) {
+      break;
+    }
+
+    const more = await confirm({ message: "Add another fee claimer?", default: true });
+    if (!more) {
+      break;
+    }
+  }
+
+  return claimers;
+}
+
+async function inputBps(remaining: number): Promise<number> {
+  const raw = await input({
+    message: `Basis points (1-${remaining}, e.g. 3000 = 30%):`,
+    validate: (val) => {
+      const n = Number(val);
+      if (!Number.isInteger(n) || n < 1 || n > remaining) {
+        return `Enter a whole number between 1 and ${remaining}.`;
+      }
+      return true;
+    },
+  });
+  return Number(raw);
+}
+
 export function registerLaunchCommands(program: Command): void {
   const launch = program.command("launch").description("Token launch flows");
 
@@ -121,11 +217,26 @@ export function registerLaunchCommands(program: Command): void {
         const website = await optionalFlagOrPrompt(options.website, "Website URL (optional):");
         const telegram = await optionalFlagOrPrompt(options.telegram, "Telegram URL (optional):");
 
-        const feeClaimersInput = parseFeeClaimers(options.feeClaimers);
+        const feeClaimersInput = options.feeClaimers
+          ? parseFeeClaimers(options.feeClaimers)
+          : await buildFeeClaimersInteractive();
+
         if (!options.skipConfirm) {
-          const ok = await promptConfirm(
-            `Launch ${name} (${symbol}) with initial buy ${initialBuy} lamports from ${keypair.publicKey.toBase58()}?`,
-          );
+          let summary = `Launch ${name} (${symbol}) with initial buy ${initialBuy} lamports from ${keypair.publicKey.toBase58()}`;
+          if (feeClaimersInput.length > 0) {
+            const allocBps = feeClaimersInput.reduce((s, c) => s + c.bps, 0);
+            const lines = feeClaimersInput.map((c) => {
+              const label = c.wallet
+                ? `wallet:${shortAddress(c.wallet)}`
+                : `${c.provider}:${c.username}`;
+              return `  ${label} ${(c.bps / 100).toFixed(2)}%`;
+            });
+            lines.push(`  creator: ${((TOTAL_BPS - allocBps) / 100).toFixed(2)}%`);
+            summary += `\n\nFee split:\n${lines.join("\n")}`;
+          } else {
+            summary += "\n\nFee split: 100% to creator";
+          }
+          const ok = await promptConfirm(`${summary}\n\nProceed?`);
           if (!ok) {
             return;
           }
@@ -146,8 +257,8 @@ export function registerLaunchCommands(program: Command): void {
         const feeClaimers: Array<{ user: PublicKey; userBps: number }> = [];
 
         if (feeClaimersInput.length > 0) {
-          const inputBps = feeClaimersInput.reduce((sum, c) => sum + c.bps, 0);
-          const creatorBps = 10000 - inputBps;
+          const allocatedBps = feeClaimersInput.reduce((sum, c) => sum + c.bps, 0);
+          const creatorBps = TOTAL_BPS - allocatedBps;
           if (creatorBps < 0) {
             throw new Error("Total fee claimer BPS exceeds 10000.");
           }
@@ -155,11 +266,17 @@ export function registerLaunchCommands(program: Command): void {
             feeClaimers.push({ user: keypair.publicKey, userBps: creatorBps });
           }
           for (const claimer of feeClaimersInput) {
-            const user = await (sdk as any).state.getLaunchWalletV2(claimer.username, claimer.provider);
-            feeClaimers.push({ user: user.wallet, userBps: claimer.bps });
+            if (claimer.wallet) {
+              feeClaimers.push({ user: new PublicKey(claimer.wallet), userBps: claimer.bps });
+            } else if (claimer.username && claimer.provider) {
+              const user = await (sdk as any).state.getLaunchWalletV2(claimer.username, claimer.provider);
+              feeClaimers.push({ user: user.wallet, userBps: claimer.bps });
+            } else {
+              throw new Error("Each fee claimer must have either wallet or provider+username.");
+            }
           }
         } else {
-          feeClaimers.push({ user: keypair.publicKey, userBps: 10000 });
+          feeClaimers.push({ user: keypair.publicKey, userBps: TOTAL_BPS });
         }
 
         let additionalLookupTables: PublicKey[] | undefined;
