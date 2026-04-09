@@ -1,0 +1,45 @@
+{
+  "name": "bags-cli",
+  "version": "0.1.0",
+  "description": "Fast CLI for Bags API and SDK workflows",
+  "type": "module",
+  "bin": {
+    "bags": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "start": "node dist/index.js"
+  },
+  "keywords": [
+    "bags",
+    "cli",
+    "solana"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@bagsfm/bags-sdk": "latest",
+    "@inquirer/prompts": "latest",
+    "@solana/web3.js": "latest",
+    "bs58": "latest",
+    "chalk": "latest",
+    "cli-table3": "latest",
+    "commander": "latest",
+    "ora": "latest",
+    "tweetnacl": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "tsup": "latest",
+    "typescript": "latest"
+  }
+}
