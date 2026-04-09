@@ -1,6 +1,6 @@
 # bags-cli
 
-Fast, global-installable CLI for Bags authentication, trading, launches, fees, and configuration.
+CLI for Bags authentication, trading, launches, fees, and configuration.
 
 ## Install
 

@@ -1,7 +1,7 @@
 {
   "name": "bags-cli",
   "version": "0.1.0",
-  "description": "Fast CLI for Bags API and SDK workflows",
+  "description": "CLI for Bags API and SDK workflows",
   "type": "module",
   "bin": {
     "bags": "./dist/index.js"
