@@ -1,17 +1,17 @@
-# bags-cli
+# @bagsfm/bags-cli
 
 CLI for Bags authentication, trading, launches, fees, and configuration.
 
 ## Install
 
 ```bash
-npm i -g bags-cli
+npm i -g @bagsfm/bags-cli
 ```
 
 Or run without global install:
 
 ```bash
-npx bags-cli --help
+npx @bagsfm/bags-cli --help
 ```
 
 After installation, use:
