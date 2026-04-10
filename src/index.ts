@@ -19,7 +19,8 @@ program
   .name("bags")
   .description("Bags CLI - auth, trading, launches, fees, and config")
   .version("0.1.2")
-  .option("--json", "Output machine-readable JSON where supported");
+  .option("--json", "Output machine-readable JSON where supported")
+  .option("--input-json <json>", "Pass all options as a JSON object");
 
 registerSetupCommand(program);
 registerAuthCommands(program);

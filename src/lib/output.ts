@@ -12,6 +12,17 @@ export async function shouldUseJson(command: Command): Promise<boolean> {
   return config.output === "json";
 }
 
+export function isJsonMode(command: Command): boolean {
+  const globalOpts = command.optsWithGlobals() as { json?: boolean };
+  return Boolean(globalOpts.json);
+}
+
+export function log(command: Command, ...args: unknown[]): void {
+  if (!isJsonMode(command)) {
+    console.log(...args);
+  }
+}
+
 function formatValue(value: unknown): string {
   if (value === null || value === undefined) {
     return chalk.dim("—");

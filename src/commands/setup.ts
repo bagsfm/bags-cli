@@ -3,6 +3,7 @@ import { Command } from "commander";
 import { runAgentAuthFlow } from "../lib/auth.js";
 import { wrapAction } from "../lib/command.js";
 import { loadCliConfig, saveCliConfig } from "../lib/config.js";
+import { log, printData } from "../lib/output.js";
 import { BAGS_KEYPAIR_PATH } from "../lib/paths.js";
 import { flagOrPrompt, promptSecret } from "../lib/prompt.js";
 import {
@@ -27,7 +28,7 @@ export function registerSetupCommand(program: Command): void {
     .option("--key-name <name>", "Label for API key", "Bags CLI Key")
     .action(
       wrapAction(async (command, options: SetupOptions) => {
-        console.log(chalk.bold("\nBags CLI Setup\n"));
+        log(command, chalk.bold("\nBags CLI Setup\n"));
 
         const rpcUrl = await flagOrPrompt(
           options.rpcUrl,
@@ -37,7 +38,7 @@ export function registerSetupCommand(program: Command): void {
 
         const config = await loadCliConfig();
         await saveCliConfig({ ...config, rpcUrl: resolvedRpc });
-        console.log(chalk.green(`  RPC URL saved: ${resolvedRpc}`));
+        log(command, chalk.green(`  RPC URL saved: ${resolvedRpc}`));
 
         let privateKeyRaw: string;
         if (options.privateKey) {
@@ -53,7 +54,7 @@ export function registerSetupCommand(program: Command): void {
           }
           return await importKeypairFromBase58(privateKeyRaw);
         });
-        console.log(chalk.green(`  Wallet imported: ${keypair.publicKey.toBase58()}`));
+        log(command, chalk.green(`  Wallet imported: ${keypair.publicKey.toBase58()}`));
 
         const credentials = await withSpinner("Authenticating with Bags", async () => {
           return await runAgentAuthFlow({
@@ -64,12 +65,18 @@ export function registerSetupCommand(program: Command): void {
         });
 
         const masked = `${credentials.apiKey.slice(0, 6)}...${credentials.apiKey.slice(-4)}`;
-        console.log(
+        log(
+          command,
           chalk.bold.green("\nSetup complete!\n") +
             `  Wallet:  ${credentials.walletAddress}\n` +
             `  API Key: ${masked}\n` +
             `  RPC:     ${resolvedRpc}\n`,
         );
+        await printData(command, {
+          walletAddress: credentials.walletAddress,
+          apiKey: masked,
+          rpcUrl: resolvedRpc,
+        });
       }),
     );
 }

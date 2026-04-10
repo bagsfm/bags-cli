@@ -3,7 +3,7 @@ import { Command } from "commander";
 import { runAgentAuthFlow } from "../lib/auth.js";
 import { wrapAction } from "../lib/command.js";
 import { clearCredentials, loadCredentials } from "../lib/credentials.js";
-import { printData } from "../lib/output.js";
+import { log, printData } from "../lib/output.js";
 import { BAGS_KEYPAIR_PATH } from "../lib/paths.js";
 import { promptSecret } from "../lib/prompt.js";
 import { deleteKeypair } from "../lib/wallet.js";
@@ -35,7 +35,7 @@ export function registerAuthCommands(program: Command): void {
             mfaCodeProvider: async () => await promptSecret("Enter MFA code"),
           });
         });
-        console.log(chalk.green("Authentication successful."));
+        log(command, chalk.green("Authentication successful."));
         await printData(command, {
           walletAddress: credentials.walletAddress,
           keyId: credentials.keyId ?? null,
@@ -51,7 +51,8 @@ export function registerAuthCommands(program: Command): void {
       wrapAction(async (command) => {
         const credentials = await loadCredentials();
         if (!credentials) {
-          console.log(chalk.yellow("Not authenticated. Run `bags auth login`."));
+          await printData(command, { authenticated: false });
+          log(command, chalk.yellow("Not authenticated. Run `bags auth login`."));
           return;
         }
         const masked = `${credentials.apiKey.slice(0, 6)}...${credentials.apiKey.slice(-4)}`;
@@ -70,12 +71,13 @@ export function registerAuthCommands(program: Command): void {
     .description("Remove credentials. Optionally remove keypair too")
     .option("--all", "Also remove wallet keypair")
     .action(
-      wrapAction(async (_command, options: LogoutOptions) => {
+      wrapAction(async (command, options: LogoutOptions) => {
         await clearCredentials();
         if (options.all) {
           await deleteKeypair();
         }
-        console.log(chalk.green(`Logged out${options.all ? " and deleted keypair" : ""}.`));
+        log(command, chalk.green(`Logged out${options.all ? " and deleted keypair" : ""}.`));
+        await printData(command, { loggedOut: true, keypairDeleted: Boolean(options.all) });
       }),
     );
 }
