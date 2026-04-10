@@ -21,8 +21,8 @@ export function wrapAction<T extends unknown[]>(
 ): (...args: [...T, Command]) => Promise<void> {
   return async (...args: [...T, Command]) => {
     const command = args[args.length - 1] as Command;
-    const rest = mergeJsonInput(command, args.slice(0, -1)) as T;
     try {
+      const rest = mergeJsonInput(command, args.slice(0, -1)) as T;
       await fn(command, ...rest);
     } catch (error) {
       handleCliError(error);
