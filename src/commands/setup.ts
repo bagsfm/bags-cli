@@ -28,7 +28,7 @@ export function registerSetupCommand(program: Command): void {
     .option("--key-name <name>", "Label for API key", "Bags CLI Key")
     .action(
       wrapAction(async (command, options: SetupOptions) => {
-        log(command, chalk.bold("\nBags CLI Setup\n"));
+        await log(command, chalk.bold("\nBags CLI Setup\n"));
 
         const rpcUrl = await flagOrPrompt(
           options.rpcUrl,
@@ -38,7 +38,7 @@ export function registerSetupCommand(program: Command): void {
 
         const config = await loadCliConfig();
         await saveCliConfig({ ...config, rpcUrl: resolvedRpc });
-        log(command, chalk.green(`  RPC URL saved: ${resolvedRpc}`));
+        await log(command, chalk.green(`  RPC URL saved: ${resolvedRpc}`));
 
         let privateKeyRaw: string;
         if (options.privateKey) {
@@ -54,7 +54,7 @@ export function registerSetupCommand(program: Command): void {
           }
           return await importKeypairFromBase58(privateKeyRaw);
         });
-        log(command, chalk.green(`  Wallet imported: ${keypair.publicKey.toBase58()}`));
+        await log(command, chalk.green(`  Wallet imported: ${keypair.publicKey.toBase58()}`));
 
         const credentials = await withSpinner("Authenticating with Bags", async () => {
           return await runAgentAuthFlow({
@@ -65,7 +65,7 @@ export function registerSetupCommand(program: Command): void {
         });
 
         const masked = `${credentials.apiKey.slice(0, 6)}...${credentials.apiKey.slice(-4)}`;
-        log(
+        await log(
           command,
           chalk.bold.green("\nSetup complete!\n") +
             `  Wallet:  ${credentials.walletAddress}\n` +

@@ -12,13 +12,8 @@ export async function shouldUseJson(command: Command): Promise<boolean> {
   return config.output === "json";
 }
 
-export function isJsonMode(command: Command): boolean {
-  const globalOpts = command.optsWithGlobals() as { json?: boolean };
-  return Boolean(globalOpts.json);
-}
-
-export function log(command: Command, ...args: unknown[]): void {
-  if (!isJsonMode(command)) {
+export async function log(command: Command, ...args: unknown[]): Promise<void> {
+  if (!(await shouldUseJson(command))) {
     console.log(...args);
   }
 }

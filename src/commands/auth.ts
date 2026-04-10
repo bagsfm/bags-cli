@@ -35,7 +35,7 @@ export function registerAuthCommands(program: Command): void {
             mfaCodeProvider: async () => await promptSecret("Enter MFA code"),
           });
         });
-        log(command, chalk.green("Authentication successful."));
+        await log(command, chalk.green("Authentication successful."));
         await printData(command, {
           walletAddress: credentials.walletAddress,
           keyId: credentials.keyId ?? null,
@@ -52,7 +52,7 @@ export function registerAuthCommands(program: Command): void {
         const credentials = await loadCredentials();
         if (!credentials) {
           await printData(command, { authenticated: false });
-          log(command, chalk.yellow("Not authenticated. Run `bags auth login`."));
+          await log(command, chalk.yellow("Not authenticated. Run `bags auth login`."));
           return;
         }
         const masked = `${credentials.apiKey.slice(0, 6)}...${credentials.apiKey.slice(-4)}`;
@@ -76,7 +76,7 @@ export function registerAuthCommands(program: Command): void {
         if (options.all) {
           await deleteKeypair();
         }
-        log(command, chalk.green(`Logged out${options.all ? " and deleted keypair" : ""}.`));
+        await log(command, chalk.green(`Logged out${options.all ? " and deleted keypair" : ""}.`));
         await printData(command, { loggedOut: true, keypairDeleted: Boolean(options.all) });
       }),
     );
