@@ -12,13 +12,14 @@ import { registerSettingsCommands } from "./commands/settings.js";
 import { registerTradeCommands } from "./commands/trade.js";
 import { registerWalletCommands } from "./commands/wallet.js";
 import { handleCliError } from "./utils/errors.js";
+import { cliVersion } from "./version.js";
 
 const program = new Command();
 
 program
   .name("bags")
   .description("Bags CLI - auth, trading, launches, fees, and config")
-  .version("0.1.2")
+  .version(cliVersion)
   .option("--json", "Output machine-readable JSON where supported")
   .option("--input-json <json>", "Pass all options as a JSON object");
 
