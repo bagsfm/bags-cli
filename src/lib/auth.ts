@@ -1,6 +1,8 @@
 import bs58 from "bs58";
 import nacl from "tweetnacl";
-import { Keypair } from "@solana/web3.js";
+import { Connection, Keypair } from "@solana/web3.js";
+import { BagsSDK } from "@bagsfm/bags-sdk";
+import { loadCliConfig } from "./config.js";
 import { loadKeypair, saveKeypair } from "./wallet.js";
 import { BAGS_KEYPAIR_PATH } from "./paths.js";
 import { BagsCredentials, saveCredentials } from "./credentials.js";
@@ -18,6 +20,15 @@ type CallbackResponse = {
   mfaRequired?: boolean;
   authCode?: string;
 };
+
+type AuthMeResponse = {
+  user?: {
+    uuid?: string;
+    username?: string;
+  };
+};
+
+export type AuthMode = "wallet" | "manual";
 
 async function post<T>(path: string, body: Record<string, unknown>): Promise<T> {
   const response = await fetch(`${BAGS_BASE_URL}${path}`, {
@@ -47,6 +58,17 @@ export async function getOrCreateAuthKeypair(path = BAGS_KEYPAIR_PATH): Promise<
   const kp = Keypair.generate();
   await saveKeypair(kp, path);
   return kp;
+}
+
+export function parseAuthMode(raw: string | undefined): AuthMode {
+  if (!raw || raw === "") {
+    return "wallet";
+  }
+  const normalized = raw.trim().toLowerCase();
+  if (normalized === "wallet" || normalized === "manual") {
+    return normalized;
+  }
+  throw new Error(`Invalid auth mode: ${raw}. Use 'wallet' or 'manual'.`);
 }
 
 export async function authInit(address: string): Promise<InitResponse> {
@@ -120,10 +142,56 @@ export async function runAgentAuthFlow(args: {
   const credentials: BagsCredentials = {
     apiKey,
     keyId,
+    authMode: "wallet",
     walletAddress: address,
     authenticatedAt: new Date().toISOString(),
   };
 
+  await saveCredentials(credentials);
+  return credentials;
+}
+
+export async function validateApiKeyWithSdk(apiKey: string): Promise<{ uuid: string; username: string }> {
+  const normalizedKey = apiKey.trim();
+  if (!normalizedKey) {
+    throw new Error("API key is required.");
+  }
+
+  const config = await loadCliConfig();
+  const connection = new Connection(config.rpcUrl, config.commitment);
+  const sdk = new BagsSDK(normalizedKey, connection, config.commitment);
+
+  try {
+    const response = (await sdk.auth.me()) as AuthMeResponse;
+    const uuid = response.user?.uuid;
+    if (!uuid) {
+      throw new Error("Missing user uuid in response.");
+    }
+    return {
+      uuid,
+      username: response.user?.username ?? "unknown",
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.toLowerCase().includes("401") || message.toLowerCase().includes("unauthorized")) {
+      throw new Error("Invalid API key. Please provide a valid Bags API key.");
+    }
+    throw new Error(`Failed to validate API key: ${message}`);
+  }
+}
+
+export async function runManualAuthFlow(args: {
+  apiKey: string;
+  keypairPath?: string;
+}): Promise<BagsCredentials> {
+  await validateApiKeyWithSdk(args.apiKey);
+  const keypair = await getOrCreateAuthKeypair(args.keypairPath);
+  const credentials: BagsCredentials = {
+    apiKey: args.apiKey.trim(),
+    authMode: "manual",
+    walletAddress: keypair.publicKey.toBase58(),
+    authenticatedAt: new Date().toISOString(),
+  };
   await saveCredentials(credentials);
   return credentials;
 }

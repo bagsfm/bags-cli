@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import { Command } from "commander";
-import { runAgentAuthFlow } from "../lib/auth.js";
+import { parseAuthMode, runAgentAuthFlow, runManualAuthFlow } from "../lib/auth.js";
 import { wrapAction } from "../lib/command.js";
 import { clearCredentials, loadCredentials } from "../lib/credentials.js";
 import { log, printData } from "../lib/output.js";
@@ -12,6 +12,8 @@ import { withSpinner } from "../utils/spinner.js";
 type LoginOptions = {
   keypair?: string;
   keyName?: string;
+  authMode?: string;
+  apiKey?: string;
 };
 
 type LogoutOptions = {
@@ -23,20 +25,33 @@ export function registerAuthCommands(program: Command): void {
 
   auth
     .command("login")
-    .description("Authenticate via wallet signature flow and store API key")
+    .description("Authenticate with wallet signature flow or a manual API key")
     .option("--keypair <path>", "Custom keypair path")
     .option("--key-name <name>", "Label for API key", "Bags CLI Key")
+    .option("--auth-mode <mode>", "Authentication mode: wallet|manual", "wallet")
+    .option("--api-key <key>", "API key (required when auth mode is manual)")
     .action(
       wrapAction(async (command, options: LoginOptions) => {
-        const credentials = await withSpinner("Authenticating with Bags", async () => {
-          return await runAgentAuthFlow({
-            keyName: options.keyName ?? "Bags CLI Key",
-            keypairPath: options.keypair ?? BAGS_KEYPAIR_PATH,
-            mfaCodeProvider: async () => await promptSecret("Enter MFA code"),
-          });
-        });
+        const authMode = parseAuthMode(options.authMode);
+        const credentials =
+          authMode === "wallet"
+            ? await withSpinner("Authenticating with Bags", async () => {
+                return await runAgentAuthFlow({
+                  keyName: options.keyName ?? "Bags CLI Key",
+                  keypairPath: options.keypair ?? BAGS_KEYPAIR_PATH,
+                  mfaCodeProvider: async () => await promptSecret("Enter MFA code:"),
+                });
+              })
+            : await withSpinner("Validating API key", async () => {
+                const apiKey = await resolveApiKey(options.apiKey);
+                return await runManualAuthFlow({
+                  apiKey,
+                  keypairPath: options.keypair ?? BAGS_KEYPAIR_PATH,
+                });
+              });
         await log(command, chalk.green("Authentication successful."));
         await printData(command, {
+          authMode: credentials.authMode ?? "wallet",
           walletAddress: credentials.walletAddress,
           keyId: credentials.keyId ?? null,
           authenticatedAt: credentials.authenticatedAt,
@@ -58,6 +73,7 @@ export function registerAuthCommands(program: Command): void {
         const masked = `${credentials.apiKey.slice(0, 6)}...${credentials.apiKey.slice(-4)}`;
         await printData(command, {
           authenticated: true,
+          authMode: credentials.authMode ?? "wallet",
           walletAddress: credentials.walletAddress,
           apiKey: masked,
           keyId: credentials.keyId ?? null,
@@ -80,4 +96,23 @@ export function registerAuthCommands(program: Command): void {
         await printData(command, { loggedOut: true, keypairDeleted: Boolean(options.all) });
       }),
     );
+}
+
+async function resolveApiKey(rawApiKey: string | undefined): Promise<string> {
+  const trimmed = rawApiKey?.trim();
+  if (trimmed) {
+    return trimmed;
+  }
+
+  if (!process.stdin.isTTY) {
+    throw new Error(
+      "Manual auth mode requires --api-key (or --input-json '{\"apiKey\":\"...\"}') in non-interactive environments.",
+    );
+  }
+
+  const prompted = (await promptSecret("Enter API key:")).trim();
+  if (!prompted) {
+    throw new Error("Manual auth mode requires a non-empty API key.");
+  }
+  return prompted;
 }
