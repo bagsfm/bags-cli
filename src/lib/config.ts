@@ -10,6 +10,18 @@ export type CliConfig = {
   output: OutputMode;
 };
 
+const COMMITMENT_LEVELS = ["processed", "confirmed", "finalized"] as const;
+
+function normalizeCommitment(value: unknown): CliConfig["commitment"] {
+  if (
+    typeof value === "string" &&
+    (COMMITMENT_LEVELS as readonly string[]).includes(value)
+  ) {
+    return value as CliConfig["commitment"];
+  }
+  return DEFAULT_CLI_CONFIG.commitment;
+}
+
 export const DEFAULT_CLI_CONFIG: CliConfig = {
   rpcUrl: "https://api.mainnet-beta.solana.com",
   commitment: "processed",
@@ -22,7 +34,7 @@ export async function loadCliConfig(): Promise<CliConfig> {
     const parsed = JSON.parse(raw) as Partial<CliConfig>;
     return {
       rpcUrl: parsed.rpcUrl ?? DEFAULT_CLI_CONFIG.rpcUrl,
-      commitment: parsed.commitment ?? DEFAULT_CLI_CONFIG.commitment,
+      commitment: normalizeCommitment(parsed.commitment),
       output: parsed.output ?? DEFAULT_CLI_CONFIG.output,
     };
   } catch {

@@ -26,7 +26,10 @@ export function registerSettingsCommands(program: Command): void {
     .command("set")
     .description("Set one or more settings")
     .option("--rpc-url <url>", "Default RPC URL")
-    .option("--commitment <level>", "processed|confirmed|finalized")
+    .option(
+      "--commitment <level>",
+      "Solana commitment: processed|confirmed|finalized (default for new configs: processed)",
+    )
     .option("--output <mode>", "pretty|table|json")
     .action(
       wrapAction(async (command, options: SetOptions) => {
