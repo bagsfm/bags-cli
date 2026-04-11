@@ -1,6 +1,6 @@
 {
   "name": "@bagsfm/bags-cli",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "CLI for Bags API and SDK workflows — auth, trading, launches, fees, and config",
   "type": "module",
   "bin": {
