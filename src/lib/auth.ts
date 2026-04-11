@@ -161,16 +161,9 @@ export async function validateApiKeyWithSdk(apiKey: string): Promise<{ uuid: str
   const connection = new Connection(config.rpcUrl, config.commitment);
   const sdk = new BagsSDK(normalizedKey, connection, config.commitment);
 
+  let response: AuthMeResponse;
   try {
-    const response = (await sdk.auth.me()) as AuthMeResponse;
-    const uuid = response.user?.uuid;
-    if (!uuid) {
-      throw new Error("Missing user uuid in response.");
-    }
-    return {
-      uuid,
-      username: response.user?.username ?? "unknown",
-    };
+    response = (await sdk.auth.me()) as AuthMeResponse;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (message.toLowerCase().includes("401") || message.toLowerCase().includes("unauthorized")) {
@@ -178,6 +171,16 @@ export async function validateApiKeyWithSdk(apiKey: string): Promise<{ uuid: str
     }
     throw new Error(`Failed to validate API key: ${message}`);
   }
+
+  const uuid = response.user?.uuid;
+  if (!uuid) {
+    throw new Error("Missing user uuid in response.");
+  }
+
+  return {
+    uuid,
+    username: response.user?.username ?? "unknown",
+  };
 }
 
 export async function runManualAuthFlow(args: {
