@@ -12,6 +12,12 @@ export async function shouldUseJson(command: Command): Promise<boolean> {
   return config.output === "json";
 }
 
+export async function log(command: Command, ...args: unknown[]): Promise<void> {
+  if (!(await shouldUseJson(command))) {
+    console.log(...args);
+  }
+}
+
 function formatValue(value: unknown): string {
   if (value === null || value === undefined) {
     return chalk.dim("—");
