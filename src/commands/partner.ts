@@ -5,7 +5,7 @@ import { printData } from "../lib/output.js";
 import { flagOrPrompt, promptConfirm } from "../lib/prompt.js";
 import { getSdkContext } from "../lib/sdk.js";
 import { getLocalSigner } from "../lib/signer.js";
-import { signAndSend } from "../lib/tx.js";
+import { signAndSend, signAndSendAll } from "../lib/tx.js";
 
 type PartnerOptions = {
   partner?: string;
@@ -62,10 +62,7 @@ export function registerPartnerCommands(program: Command): void {
         }
 
         const txs = await (sdk as any).partner.getPartnerClaimTransactions(keypair.publicKey);
-        const signatures: string[] = [];
-        for (const tx of txs as any[]) {
-          signatures.push(await signAndSend(connection, commitment, tx, keypair));
-        }
+        const signatures = await signAndSendAll(connection, commitment, txs as any[], keypair);
         await printData(command, { signatures });
       }),
     );

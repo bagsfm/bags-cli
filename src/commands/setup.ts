@@ -11,6 +11,7 @@ import {
   importKeypairFromBase58,
   importKeypairFromIntArray,
 } from "../lib/wallet.js";
+import { maskApiKey } from "../utils/format.js";
 import { withSpinner } from "../utils/spinner.js";
 
 type SetupOptions = {
@@ -78,7 +79,7 @@ export function registerSetupCommand(program: Command): void {
                 });
               });
 
-        const masked = `${credentials.apiKey.slice(0, 6)}...${credentials.apiKey.slice(-4)}`;
+        const masked = maskApiKey(credentials.apiKey);
         await log(
           command,
           chalk.bold.green("\nSetup complete!\n") +

@@ -8,3 +8,10 @@ export function shortAddress(value: string): string {
   }
   return `${value.slice(0, 4)}...${value.slice(-4)}`;
 }
+
+export function maskApiKey(apiKey: string): string {
+  if (apiKey.length <= 10) {
+    return apiKey;
+  }
+  return `${apiKey.slice(0, 6)}...${apiKey.slice(-4)}`;
+}

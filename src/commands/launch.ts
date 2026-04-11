@@ -89,13 +89,17 @@ function parseFeeClaimers(raw?: string): FeeClaimerInput[] {
   return parsed;
 }
 
+function formatClaimerLabel(claimer: FeeClaimerInput): string {
+  return claimer.wallet
+    ? `wallet:${shortAddress(claimer.wallet)}`
+    : `${claimer.provider}:${claimer.username}`;
+}
+
 function printClaimerSummary(claimers: FeeClaimerInput[]): void {
   const usedBps = claimers.reduce((s, c) => s + c.bps, 0);
   console.log(chalk.dim("\n  Fee claimers:"));
   claimers.forEach((c, i) => {
-    const label = c.wallet
-      ? `wallet:${shortAddress(c.wallet)}`
-      : `${c.provider}:${c.username}`;
+    const label = formatClaimerLabel(c);
     console.log(`    ${i + 1}. ${label.padEnd(28)} ${(c.bps / 100).toFixed(2)}%`);
   });
   console.log(chalk.dim(`  Creator keeps: ${((TOTAL_BPS - usedBps) / 100).toFixed(2)}%\n`));
@@ -226,9 +230,7 @@ export function registerLaunchCommands(program: Command): void {
           if (feeClaimersInput.length > 0) {
             const allocBps = feeClaimersInput.reduce((s, c) => s + c.bps, 0);
             const lines = feeClaimersInput.map((c) => {
-              const label = c.wallet
-                ? `wallet:${shortAddress(c.wallet)}`
-                : `${c.provider}:${c.username}`;
+              const label = formatClaimerLabel(c);
               return `  ${label} ${(c.bps / 100).toFixed(2)}%`;
             });
             lines.push(`  creator: ${((TOTAL_BPS - allocBps) / 100).toFixed(2)}%`);

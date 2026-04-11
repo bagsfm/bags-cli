@@ -10,3 +10,16 @@ export async function signAndSend(
   const signature = await signAndSendTransaction(connection, commitment, transaction, keypair);
   return signature;
 }
+
+export async function signAndSendAll(
+  connection: Connection,
+  commitment: "processed" | "confirmed" | "finalized",
+  transactions: Iterable<VersionedTransaction>,
+  keypair: Keypair,
+): Promise<string[]> {
+  const signatures: string[] = [];
+  for (const transaction of transactions) {
+    signatures.push(await signAndSend(connection, commitment, transaction, keypair));
+  }
+  return signatures;
+}

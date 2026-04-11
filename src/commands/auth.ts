@@ -7,6 +7,7 @@ import { log, printData } from "../lib/output.js";
 import { BAGS_KEYPAIR_PATH } from "../lib/paths.js";
 import { promptSecret } from "../lib/prompt.js";
 import { deleteKeypair } from "../lib/wallet.js";
+import { maskApiKey } from "../utils/format.js";
 import { withSpinner } from "../utils/spinner.js";
 
 type LoginOptions = {
@@ -70,7 +71,7 @@ export function registerAuthCommands(program: Command): void {
           await log(command, chalk.yellow("Not authenticated. Run `bags auth login`."));
           return;
         }
-        const masked = `${credentials.apiKey.slice(0, 6)}...${credentials.apiKey.slice(-4)}`;
+        const masked = maskApiKey(credentials.apiKey);
         await printData(command, {
           authenticated: true,
           authMode: credentials.authMode ?? "wallet",

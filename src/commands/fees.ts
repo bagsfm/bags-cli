@@ -5,7 +5,7 @@ import { wrapAction } from "../lib/command.js";
 import { printData, printTable } from "../lib/output.js";
 import { flagOrPrompt, flagOrPromptNumber, promptConfirm } from "../lib/prompt.js";
 import { getLocalSigner } from "../lib/signer.js";
-import { signAndSend } from "../lib/tx.js";
+import { signAndSendAll } from "../lib/tx.js";
 import { lamportsToSol, shortAddress } from "../utils/format.js";
 
 type MintOptions = {
@@ -75,10 +75,7 @@ export function registerFeesCommands(program: Command): void {
         }
 
         const transactions = await getClaimTransactionsForMint(sdk, keypair.publicKey, mint);
-        const signatures: string[] = [];
-        for (const tx of transactions) {
-          signatures.push(await signAndSend(connection, commitment, tx, keypair));
-        }
+        const signatures = await signAndSendAll(connection, commitment, transactions, keypair);
         await printData(command, { mint: mint.toBase58(), signatures });
       }),
     );
@@ -105,10 +102,7 @@ export function registerFeesCommands(program: Command): void {
         const sent: Array<{ mint: string; signatures: string[] }> = [];
         for (const mint of mints) {
           const txs = await getClaimTransactionsForMint(sdk, keypair.publicKey, new PublicKey(mint));
-          const signatures: string[] = [];
-          for (const tx of txs) {
-            signatures.push(await signAndSend(connection, commitment, tx, keypair));
-          }
+          const signatures = await signAndSendAll(connection, commitment, txs, keypair);
           sent.push({ mint, signatures });
         }
 
