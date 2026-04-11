@@ -5,6 +5,7 @@ import { writeJsonSecure } from "./fs.js";
 export type BagsCredentials = {
   apiKey: string;
   keyId?: string;
+  authMode?: "wallet" | "manual";
   walletAddress: string;
   authenticatedAt: string;
 };
@@ -21,6 +22,7 @@ export async function loadCredentials(): Promise<BagsCredentials | null> {
     return {
       apiKey: parsed.apiKey,
       keyId: parsed.keyId,
+      authMode: parsed.authMode === "manual" ? "manual" : "wallet",
       walletAddress: parsed.walletAddress,
       authenticatedAt: parsed.authenticatedAt ?? new Date().toISOString(),
     };

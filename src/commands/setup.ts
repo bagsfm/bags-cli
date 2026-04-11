@@ -1,8 +1,9 @@
 import chalk from "chalk";
 import { Command } from "commander";
-import { runAgentAuthFlow } from "../lib/auth.js";
+import { parseAuthMode, resolveManualApiKey, runAgentAuthFlow, runManualAuthFlow } from "../lib/auth.js";
 import { wrapAction } from "../lib/command.js";
 import { loadCliConfig, saveCliConfig } from "../lib/config.js";
+import { BagsCredentials } from "../lib/credentials.js";
 import { log, printData } from "../lib/output.js";
 import { BAGS_KEYPAIR_PATH } from "../lib/paths.js";
 import { flagOrPrompt, promptSecret } from "../lib/prompt.js";
@@ -11,12 +12,15 @@ import {
   importKeypairFromBase58,
   importKeypairFromIntArray,
 } from "../lib/wallet.js";
+import { maskApiKey } from "../utils/format.js";
 import { withSpinner } from "../utils/spinner.js";
 
 type SetupOptions = {
   rpcUrl?: string;
   privateKey?: string;
   keyName?: string;
+  authMode?: string;
+  apiKey?: string;
 };
 
 export function registerSetupCommand(program: Command): void {
@@ -26,6 +30,8 @@ export function registerSetupCommand(program: Command): void {
     .option("--rpc-url <url>", "Solana RPC URL")
     .option("--private-key <key>", "Private key (base58 or int array)")
     .option("--key-name <name>", "Label for API key", "Bags CLI Key")
+    .option("--auth-mode <mode>", "Authentication mode: wallet|manual", "wallet")
+    .option("--api-key <key>", "API key (required when auth mode is manual)")
     .action(
       wrapAction(async (command, options: SetupOptions) => {
         await log(command, chalk.bold("\nBags CLI Setup\n"));
@@ -56,23 +62,37 @@ export function registerSetupCommand(program: Command): void {
         });
         await log(command, chalk.green(`  Wallet imported: ${keypair.publicKey.toBase58()}`));
 
-        const credentials = await withSpinner("Authenticating with Bags", async () => {
-          return await runAgentAuthFlow({
-            keyName: options.keyName ?? "Bags CLI Key",
-            keypairPath: BAGS_KEYPAIR_PATH,
-            mfaCodeProvider: async () => await promptSecret("Enter MFA code:"),
+        const authMode = parseAuthMode(options.authMode);
+        let credentials: BagsCredentials;
+        if (authMode === "wallet") {
+          credentials = await withSpinner("Authenticating with Bags", async () => {
+            return await runAgentAuthFlow({
+              keyName: options.keyName ?? "Bags CLI Key",
+              keypairPath: BAGS_KEYPAIR_PATH,
+              mfaCodeProvider: async () => await promptSecret("Enter MFA code:"),
+            });
           });
-        });
+        } else {
+          const apiKey = await resolveManualApiKey(options.apiKey);
+          credentials = await withSpinner("Validating API key", async () => {
+            return await runManualAuthFlow({
+              apiKey,
+              keypairPath: BAGS_KEYPAIR_PATH,
+            });
+          });
+        }
 
-        const masked = `${credentials.apiKey.slice(0, 6)}...${credentials.apiKey.slice(-4)}`;
+        const masked = maskApiKey(credentials.apiKey);
         await log(
           command,
           chalk.bold.green("\nSetup complete!\n") +
+            `  Mode:    ${credentials.authMode ?? "wallet"}\n` +
             `  Wallet:  ${credentials.walletAddress}\n` +
             `  API Key: ${masked}\n` +
             `  RPC:     ${resolvedRpc}\n`,
         );
         await printData(command, {
+          authMode: credentials.authMode ?? "wallet",
           walletAddress: credentials.walletAddress,
           apiKey: masked,
           rpcUrl: resolvedRpc,

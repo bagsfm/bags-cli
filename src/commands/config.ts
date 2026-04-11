@@ -5,7 +5,7 @@ import { printData } from "../lib/output.js";
 import { flagOrPrompt, promptConfirm } from "../lib/prompt.js";
 import { getSdkContext } from "../lib/sdk.js";
 import { getLocalSigner } from "../lib/signer.js";
-import { signAndSend } from "../lib/tx.js";
+import { signAndSend, signAndSendAll } from "../lib/tx.js";
 
 type ConfigOptions = {
   mint?: string;
@@ -52,12 +52,9 @@ export function registerConfigCommands(program: Command): void {
           partner: options.partner ? new PublicKey(options.partner) : undefined,
         });
 
-        const signatures: string[] = [];
-        if (Array.isArray(result.transactions)) {
-          for (const tx of result.transactions) {
-            signatures.push(await signAndSend(connection, commitment, tx, keypair));
-          }
-        }
+        const signatures = Array.isArray(result.transactions)
+          ? await signAndSendAll(connection, commitment, result.transactions, keypair)
+          : [];
 
         await printData(command, {
           meteoraConfigKey: result.meteoraConfigKey?.toString?.() ?? result.meteoraConfigKey,
@@ -90,12 +87,9 @@ export function registerConfigCommands(program: Command): void {
           feeClaimers,
         });
 
-        const signatures: string[] = [];
-        if (Array.isArray(result.transactions)) {
-          for (const tx of result.transactions) {
-            signatures.push(await signAndSend(connection, commitment, tx, keypair));
-          }
-        }
+        const signatures = Array.isArray(result.transactions)
+          ? await signAndSendAll(connection, commitment, result.transactions, keypair)
+          : [];
         await printData(command, { signatures });
       }),
     );

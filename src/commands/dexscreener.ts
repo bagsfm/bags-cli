@@ -1,6 +1,7 @@
 import { PublicKey } from "@solana/web3.js";
 import { Command } from "commander";
 import { wrapAction } from "../lib/command.js";
+import { resolveOptionalJsonObject } from "../lib/json.js";
 import { printData } from "../lib/output.js";
 import { flagOrPrompt } from "../lib/prompt.js";
 import { getSdkContext } from "../lib/sdk.js";
@@ -39,12 +40,7 @@ export function registerDexscreenerCommands(program: Command): void {
     .action(
       wrapAction(async (command, options: MintOptions) => {
         const mint = await flagOrPrompt(options.mint, "Token mint:");
-        const payload =
-          options.payload !== undefined
-            ? (JSON.parse(options.payload) as Record<string, unknown>)
-            : {
-                tokenMint: mint,
-              };
+        const payload = resolveOptionalJsonObject(options.payload, { tokenMint: mint });
         const { sdk } = await getSdkContext();
         const result = await (sdk as any).dexscreener.createOrder(payload);
         await printData(command, result);
