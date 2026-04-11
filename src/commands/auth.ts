@@ -2,7 +2,7 @@ import chalk from "chalk";
 import { Command } from "commander";
 import { parseAuthMode, resolveManualApiKey, runAgentAuthFlow, runManualAuthFlow } from "../lib/auth.js";
 import { wrapAction } from "../lib/command.js";
-import { clearCredentials, loadCredentials } from "../lib/credentials.js";
+import { BagsCredentials, clearCredentials, loadCredentials } from "../lib/credentials.js";
 import { log, printData } from "../lib/output.js";
 import { BAGS_KEYPAIR_PATH } from "../lib/paths.js";
 import { promptSecret } from "../lib/prompt.js";
@@ -34,22 +34,24 @@ export function registerAuthCommands(program: Command): void {
     .action(
       wrapAction(async (command, options: LoginOptions) => {
         const authMode = parseAuthMode(options.authMode);
-        const credentials =
-          authMode === "wallet"
-            ? await withSpinner("Authenticating with Bags", async () => {
-                return await runAgentAuthFlow({
-                  keyName: options.keyName ?? "Bags CLI Key",
-                  keypairPath: options.keypair ?? BAGS_KEYPAIR_PATH,
-                  mfaCodeProvider: async () => await promptSecret("Enter MFA code:"),
-                });
-              })
-            : await withSpinner("Validating API key", async () => {
-                const apiKey = await resolveManualApiKey(options.apiKey);
-                return await runManualAuthFlow({
-                  apiKey,
-                  keypairPath: options.keypair ?? BAGS_KEYPAIR_PATH,
-                });
-              });
+        let credentials: BagsCredentials;
+        if (authMode === "wallet") {
+          credentials = await withSpinner("Authenticating with Bags", async () => {
+            return await runAgentAuthFlow({
+              keyName: options.keyName ?? "Bags CLI Key",
+              keypairPath: options.keypair ?? BAGS_KEYPAIR_PATH,
+              mfaCodeProvider: async () => await promptSecret("Enter MFA code:"),
+            });
+          });
+        } else {
+          const apiKey = await resolveManualApiKey(options.apiKey);
+          credentials = await withSpinner("Validating API key", async () => {
+            return await runManualAuthFlow({
+              apiKey,
+              keypairPath: options.keypair ?? BAGS_KEYPAIR_PATH,
+            });
+          });
+        }
         await log(command, chalk.green("Authentication successful."));
         await printData(command, {
           authMode: credentials.authMode ?? "wallet",
