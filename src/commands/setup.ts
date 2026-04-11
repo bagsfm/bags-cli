@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import { Command } from "commander";
-import { parseAuthMode, runAgentAuthFlow, runManualAuthFlow } from "../lib/auth.js";
+import { parseAuthMode, resolveManualApiKey, runAgentAuthFlow, runManualAuthFlow } from "../lib/auth.js";
 import { wrapAction } from "../lib/command.js";
 import { loadCliConfig, saveCliConfig } from "../lib/config.js";
 import { log, printData } from "../lib/output.js";
@@ -71,7 +71,7 @@ export function registerSetupCommand(program: Command): void {
                 });
               })
             : await withSpinner("Validating API key", async () => {
-                const apiKey = await resolveApiKey(options.apiKey);
+                const apiKey = await resolveManualApiKey(options.apiKey);
                 return await runManualAuthFlow({
                   apiKey,
                   keypairPath: BAGS_KEYPAIR_PATH,
@@ -95,23 +95,4 @@ export function registerSetupCommand(program: Command): void {
         });
       }),
     );
-}
-
-async function resolveApiKey(rawApiKey: string | undefined): Promise<string> {
-  const trimmed = rawApiKey?.trim();
-  if (trimmed) {
-    return trimmed;
-  }
-
-  if (!process.stdin.isTTY) {
-    throw new Error(
-      "Manual auth mode requires --api-key (or --input-json '{\"apiKey\":\"...\"}') in non-interactive environments.",
-    );
-  }
-
-  const prompted = (await promptSecret("Enter API key:")).trim();
-  if (!prompted) {
-    throw new Error("Manual auth mode requires a non-empty API key.");
-  }
-  return prompted;
 }

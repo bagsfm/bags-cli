@@ -3,6 +3,7 @@ import nacl from "tweetnacl";
 import { Connection, Keypair } from "@solana/web3.js";
 import { BagsSDK } from "@bagsfm/bags-sdk";
 import { loadCliConfig } from "./config.js";
+import { promptSecret } from "./prompt.js";
 import { loadKeypair, saveKeypair } from "./wallet.js";
 import { BAGS_KEYPAIR_PATH } from "./paths.js";
 import { BagsCredentials, saveCredentials } from "./credentials.js";
@@ -69,6 +70,26 @@ export function parseAuthMode(raw: string | undefined): AuthMode {
     return normalized;
   }
   throw new Error(`Invalid auth mode: ${raw}. Use 'wallet' or 'manual'.`);
+}
+
+export async function resolveManualApiKey(rawApiKey: string | undefined): Promise<string> {
+  const trimmed = rawApiKey?.trim();
+  if (trimmed) {
+    return trimmed;
+  }
+
+  if (!process.stdin.isTTY) {
+    throw new Error(
+      "Manual auth mode requires --api-key (or --input-json '{\"apiKey\":\"...\"}') in non-interactive environments.",
+    );
+  }
+
+  const prompted = (await promptSecret("Enter API key:")).trim();
+  if (!prompted) {
+    throw new Error("Manual auth mode requires a non-empty API key.");
+  }
+
+  return prompted;
 }
 
 export async function authInit(address: string): Promise<InitResponse> {
