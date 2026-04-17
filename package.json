@@ -43,17 +43,23 @@
   },
   "dependencies": {
     "@bagsfm/bags-sdk": "^1.3.7",
+    "@bagsfm/play-engine": "file:../play.bags/packages/engine",
+    "@bagsfm/play-sdk": "file:../play.bags/packages/sdk",
+    "@bagsfm/play-shared": "file:../play.bags/packages/shared",
     "@inquirer/prompts": "^8.4.1",
     "@solana/web3.js": "^1.98.4",
     "bs58": "^6.0.0",
     "chalk": "^5.6.2",
     "cli-table3": "^0.6.5",
     "commander": "^14.0.3",
+    "hono": "4.12.9",
     "ora": "^9.3.0",
     "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
+    "@hono/zod-openapi": "^1.3.0",
     "@types/node": "^25.5.2",
+    "nats": "^2.29.3",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3"
   }
