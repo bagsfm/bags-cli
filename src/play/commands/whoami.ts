@@ -17,15 +17,14 @@
 import chalk from "chalk";
 import type { Command } from "commander";
 import {
+	assertPlayApiAccess,
 	maskApiKey,
 	validateApiKey,
-	validateApiKeyFormat,
 } from "../api/auth.js";
 import {
 	ApiError,
 	createPlayClient,
 	resolveApiClientConfig,
-	resolveApiKey,
 } from "../api/client.js";
 import {
 	accent,
@@ -34,15 +33,15 @@ import {
 	sectionHeader,
 	url,
 } from "../utils/colors.js";
+import { resolvePlayCommandUiState } from "../utils/command.js";
+import { getPlayCommandErrorDetails } from "../utils/errors.js";
 import { addExamplesAfter } from "../utils/help.js";
 import { writeJsonSuccess } from "../utils/json-envelope.js";
 import { showError } from "../utils/output.js";
 
 interface WhoamiOptions {
 	bagsApi?: string;
-	json?: boolean;
 	playApi?: string;
-	quiet?: boolean;
 }
 
 const formatWhoamiMessage = (
@@ -63,14 +62,6 @@ const formatWhoamiMessage = (
 	return lines.join("\n");
 };
 
-const NOT_AUTHENTICATED_MESSAGE = "Not authenticated.";
-const NOT_AUTHENTICATED_HINT =
-	"Run `bags auth login --auth-mode manual --api-key <bags_prod_…>` to authenticate.";
-
-const INVALID_FORMAT_MESSAGE =
-	"Stored Bags API key is not compatible with Play.";
-const INVALID_FORMAT_HINT = `Run \`bags auth login --auth-mode manual --api-key <bags_prod_…>\` with a Play-compatible key. Get one at ${url("https://dev.bags.fm")}`;
-
 const REVOKED_MESSAGE = "Stored API key is invalid or revoked.";
 const REVOKED_HINT =
 	"Run `bags auth login --auth-mode manual --api-key <bags_prod_…>` to authenticate again.";
@@ -81,20 +72,22 @@ const SERVICE_UNAVAILABLE_HINT = "Try again in a few moments.";
 
 const NO_PLAY_ACCOUNT_HINT = `Your key is valid for Bags but not linked to a Play account. Visit ${url("https://dev.bags.fm")} to provision Play access.`;
 
-const handleWhoamiError = (error: unknown): void => {
+const handleWhoamiError = (error: unknown, json: boolean): void => {
 	if (error instanceof ApiError) {
 		if (error.status === 401) {
-			showError(REVOKED_MESSAGE, { suggestion: REVOKED_HINT });
+			showError(REVOKED_MESSAGE, { json, suggestion: REVOKED_HINT });
 			return;
 		}
 		if (error.status === 404) {
 			showError("No Play user linked to this API key.", {
+				json,
 				suggestion: NO_PLAY_ACCOUNT_HINT,
 			});
 			return;
 		}
 		if (error.status === 503) {
 			showError(SERVICE_UNAVAILABLE_MESSAGE, {
+				json,
 				suggestion: SERVICE_UNAVAILABLE_HINT,
 			});
 			return;
@@ -107,6 +100,7 @@ const handleWhoamiError = (error: unknown): void => {
 			: "Failed to validate stored API key against Play.";
 
 	showError(message, {
+		json,
 		suggestion: REVOKED_HINT,
 	});
 };
@@ -114,31 +108,26 @@ const handleWhoamiError = (error: unknown): void => {
 /**
  * Executes the whoami flow against the Play API.
  */
-export const executeWhoami = async (options: WhoamiOptions): Promise<void> => {
-	const apiKey = await resolveApiKey();
-
-	if (!apiKey) {
-		showError(NOT_AUTHENTICATED_MESSAGE, {
-			suggestion: NOT_AUTHENTICATED_HINT,
-		});
-		return;
-	}
-
-	if (!validateApiKeyFormat(apiKey)) {
-		showError(INVALID_FORMAT_MESSAGE, { suggestion: INVALID_FORMAT_HINT });
-		return;
-	}
-
+export const executeWhoami = async (
+	options: WhoamiOptions,
+	ui: { json: boolean; quiet: boolean },
+): Promise<void> => {
 	try {
 		const config = await resolveApiClientConfig({
-			apiKey,
 			bagsApiUrl: options.bagsApi,
 			playApiUrl: options.playApi,
 		});
-		const client = createPlayClient(config);
+		const access = assertPlayApiAccess({
+			apiKey: config.apiKey,
+		});
+		const apiKey = access.apiKey;
+		const client = createPlayClient({
+			...config,
+			apiKey,
+		});
 		const user = await validateApiKey(client, apiKey);
 
-		if (options.json) {
+		if (ui.json) {
 			writeJsonSuccess({
 				apiKey: maskApiKey(apiKey),
 				keyName: user.keyName,
@@ -147,13 +136,22 @@ export const executeWhoami = async (options: WhoamiOptions): Promise<void> => {
 			return;
 		}
 
-		if (!options.quiet) {
+		if (!ui.quiet) {
 			console.log(
 				formatWhoamiMessage(user.userId, user.keyName, maskApiKey(apiKey)),
 			);
 		}
 	} catch (error) {
-		handleWhoamiError(error);
+		const details = getPlayCommandErrorDetails(error);
+		if (!(error instanceof ApiError)) {
+			showError(details.message, {
+				exitCode: details.exitCode,
+				json: ui.json,
+				suggestion: details.suggestion,
+			});
+			return;
+		}
+		handleWhoamiError(error, ui.json);
 	}
 };
 
@@ -163,7 +161,8 @@ export const registerWhoamiCommand = (parent: Command): void => {
 		.command("whoami")
 		.description("Show authenticated Play user (calls Play /auth/me)")
 		.action(async function (this: Command) {
-			await executeWhoami(this.optsWithGlobals<WhoamiOptions>());
+			const ui = await resolvePlayCommandUiState(this);
+			await executeWhoami(this.optsWithGlobals<WhoamiOptions>(), ui);
 		});
 
 	addExamplesAfter(command, [{ command: "bags play whoami" }]);

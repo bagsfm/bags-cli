@@ -14,6 +14,7 @@ import chalk from "chalk";
 import type { Command } from "commander";
 import { cliVersion } from "../../version.js";
 import { accent, accentDim, cmd, label, muted } from "../utils/colors.js";
+import { resolvePlayCommandUiState } from "../utils/command.js";
 import { addExamplesAfter } from "../utils/help.js";
 import { writeJsonSuccess } from "../utils/json-envelope.js";
 
@@ -205,9 +206,9 @@ export const registerArtCommand = (parent: Command): void => {
 	const command = parent
 		.command("art")
 		.description("Display the Bags logo")
-		.action(function (this: Command) {
-			const opts = this.optsWithGlobals<{ json?: boolean }>();
-			if (opts.json) {
+		.action(async function (this: Command) {
+			const ui = await resolvePlayCommandUiState(this);
+			if (ui.json) {
 				writeJsonSuccess(collectArtJsonPayload(cliVersion));
 				return;
 			}

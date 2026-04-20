@@ -14,6 +14,8 @@
  */
 
 import { maskApiKey as bagsMaskApiKey } from "../../utils/format.js";
+import { url } from "../utils/colors.js";
+import { PlayCommandError } from "../utils/errors.js";
 import { callApi, type PlayApiClient } from "./client.js";
 
 /**
@@ -24,6 +26,29 @@ export interface AuthUser {
 	keyId: string | null;
 	keyName: string | null;
 }
+
+interface AssertPlayApiAccessOptions {
+	readonly adminToken?: string;
+	readonly apiKey?: string | null;
+	readonly requireAdmin?: boolean;
+}
+
+interface PlayAccessState {
+	readonly adminToken?: string;
+	readonly apiKey: string;
+}
+
+const NOT_AUTHENTICATED_MESSAGE = "Not authenticated.";
+const NOT_AUTHENTICATED_HINT =
+	"Run `bags auth login --auth-mode manual --api-key <bags_prod_…>` to authenticate.";
+
+const INVALID_FORMAT_MESSAGE =
+	"Your current Bags API key isn't compatible with Play.";
+const INVALID_FORMAT_HINT = `Run \`bags auth login --auth-mode manual --api-key <bags_prod_…>\` with a Play-compatible key. Get one at ${url("https://dev.bags.fm")}`;
+
+const MISSING_ADMIN_TOKEN_MESSAGE = "This command requires admin access.";
+const MISSING_ADMIN_TOKEN_HINT =
+	"Set BAGS_PLAY_ADMIN_TOKEN or pass `--token <token>`.";
 
 /**
  * Returns true when the provided key has the `bags_prod_` developer-key prefix.
@@ -39,6 +64,35 @@ export const validateApiKeyFormat = (apiKey: string): boolean => {
  * avoid drift between `bags auth status` and `bags play whoami` output.
  */
 export const maskApiKey = (apiKey: string): string => bagsMaskApiKey(apiKey);
+
+export const assertPlayApiAccess = ({
+	adminToken,
+	apiKey,
+	requireAdmin = false,
+}: AssertPlayApiAccessOptions): PlayAccessState => {
+	if (!apiKey) {
+		throw new PlayCommandError(NOT_AUTHENTICATED_MESSAGE, {
+			suggestion: NOT_AUTHENTICATED_HINT,
+		});
+	}
+
+	if (!validateApiKeyFormat(apiKey)) {
+		throw new PlayCommandError(INVALID_FORMAT_MESSAGE, {
+			suggestion: INVALID_FORMAT_HINT,
+		});
+	}
+
+	if (requireAdmin && !adminToken) {
+		throw new PlayCommandError(MISSING_ADMIN_TOKEN_MESSAGE, {
+			suggestion: MISSING_ADMIN_TOKEN_HINT,
+		});
+	}
+
+	return {
+		adminToken,
+		apiKey,
+	};
+};
 
 /**
  * Validates the API key against the Play API and returns the associated user.

@@ -17,6 +17,10 @@
 import type { Command } from "commander";
 import { registerArtCommand } from "./commands/art.js";
 import { registerCompletionCommand } from "./commands/completion/index.js";
+import { registerDeploymentsCommand } from "./commands/deployments/index.js";
+import { registerPluginsCommand } from "./commands/plugins/index.js";
+import { registerRunsCommand } from "./commands/runs/index.js";
+import { registerSecretsCommand } from "./commands/secrets/index.js";
 import { registerWhoamiCommand } from "./commands/whoami.js";
 import { migrateLegacyPlayCredentials } from "./config/credentials-migrate.js";
 import { addExamplesAfter } from "./utils/help.js";
@@ -38,6 +42,10 @@ export const registerPlayCommands = (program: Command): void => {
 	registerArtCommand(play);
 	registerWhoamiCommand(play);
 	registerCompletionCommand(play);
+	registerRunsCommand(play);
+	registerDeploymentsCommand(play);
+	registerPluginsCommand(play);
+	registerSecretsCommand(play);
 
 	addExamplesAfter(play, [
 		{
@@ -51,6 +59,14 @@ export const registerPlayCommands = (program: Command): void => {
 		{
 			description: "Generate zsh completion script",
 			command: "bags play completion zsh",
+		},
+		{
+			description: "List recent runs",
+			command: "bags play runs list",
+		},
+		{
+			description: "Inspect a deployment",
+			command: "bags play deployments get dep_abc123",
 		},
 	]);
 };

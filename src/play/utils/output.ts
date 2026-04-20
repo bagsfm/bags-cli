@@ -1,20 +1,5 @@
-/**
- * Output helpers for Play commands. Wraps chalk-based output in a way that
- * respects the global `--quiet` and `--json` flags.
- *
- * `showError` deliberately sets `process.exitCode` instead of calling
- * `process.exit()` so multi-step commands can finish flushing output before
- * the process terminates. Callers that need an immediate exit can pass an
- * `exit` override.
- *
- * Note: long-term we should consolidate this with the existing
- * `handleCliError` helper in `src/utils/errors.ts` (see PLAY_INTEGRATION.md
- * E11). Keeping a separate module for Phase 1 makes the port reviewable.
- *
- * @packageDocumentation
- */
-
 import chalk from "chalk";
+import ora from "ora";
 import { writeJsonError } from "./json-envelope.js";
 
 const DEFAULT_USER_ERROR_EXIT_CODE = 1;
@@ -28,20 +13,92 @@ const DEFAULT_USER_ERROR_EXIT_CODE = 1;
  */
 const isJsonModeFromArgv = (): boolean => process.argv.includes("--json");
 
+const resolveJsonMode = (json?: boolean): boolean => {
+	return json ?? isJsonModeFromArgv();
+};
+
+export interface PlaySpinner {
+	readonly isSpinning: boolean;
+	fail(message?: string): void;
+	message(text: string): void;
+	start(message?: string): void;
+	stop(message?: string): void;
+}
+
+const createQuietSpinner = (): PlaySpinner => {
+	return {
+		isSpinning: false,
+		fail: () => undefined,
+		message: () => undefined,
+		start: () => undefined,
+		stop: () => undefined,
+	};
+};
+
+export interface CreateSpinnerOptions extends QuietAware {
+	json?: boolean;
+}
+
 /** Options accepted by `showError`. */
 export interface ShowErrorOptions {
 	/** Optional callback invoked with the resolved exit code. Defaults to `process.exitCode = code`. */
 	exit?: (code: number) => void;
 	/** Exit code to use. Defaults to 1 (matches bags-cli's existing behavior). */
 	exitCode?: number;
+	/** Pre-resolved JSON mode from Commander/config; falls back to argv when omitted. */
+	json?: boolean;
 	/** Short suggestion appended after the error message. */
 	suggestion?: string;
 }
 
 /** Options accepted by `showSuccess` and `showWarning`. */
 export interface QuietAware {
+	json?: boolean;
 	quiet?: boolean;
 }
+
+export const createSpinner = ({
+	json,
+	quiet = false,
+}: CreateSpinnerOptions = {}): PlaySpinner => {
+	if (quiet || resolveJsonMode(json)) {
+		return createQuietSpinner();
+	}
+
+	const spinner = ora();
+	return {
+		get isSpinning() {
+			return spinner.isSpinning;
+		},
+		fail(message?: string) {
+			if (message) {
+				spinner.fail(message);
+				return;
+			}
+
+			spinner.stop();
+		},
+		message(text: string) {
+			spinner.text = text;
+		},
+		start(message?: string) {
+			if (message) {
+				spinner.start(message);
+				return;
+			}
+
+			spinner.start();
+		},
+		stop(message?: string) {
+			if (message) {
+				spinner.stopAndPersist({ text: message });
+				return;
+			}
+
+			spinner.stop();
+		},
+	};
+};
 
 /**
  * Prints an error message to stderr (or emits a JSON error envelope when in
@@ -52,10 +109,11 @@ export const showError = (
 	{
 		exit,
 		exitCode = DEFAULT_USER_ERROR_EXIT_CODE,
+		json,
 		suggestion,
 	}: ShowErrorOptions = {},
 ): void => {
-	if (isJsonModeFromArgv()) {
+	if (resolveJsonMode(json)) {
 		writeJsonError(message, { suggestion });
 	} else {
 		console.error(`${chalk.red("■")} ${message}`);
@@ -74,9 +132,9 @@ export const showError = (
 /** Prints a success line to stdout unless `quiet` or JSON mode is active. */
 export const showSuccess = (
 	message: string,
-	{ quiet = false }: QuietAware = {},
+	{ json, quiet = false }: QuietAware = {},
 ): void => {
-	if (isJsonModeFromArgv() || quiet) {
+	if (resolveJsonMode(json) || quiet) {
 		return;
 	}
 	console.log(`${chalk.green("◆")} ${message}`);
@@ -85,9 +143,9 @@ export const showSuccess = (
 /** Prints a warning line to stdout unless `quiet` or JSON mode is active. */
 export const showWarning = (
 	message: string,
-	{ quiet = false }: QuietAware = {},
+	{ json, quiet = false }: QuietAware = {},
 ): void => {
-	if (isJsonModeFromArgv() || quiet) {
+	if (resolveJsonMode(json) || quiet) {
 		return;
 	}
 	console.log(`${chalk.bold(chalk.yellow("WARNING"))}: ${message}`);

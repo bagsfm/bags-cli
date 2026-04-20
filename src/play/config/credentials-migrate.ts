@@ -24,6 +24,7 @@ import { homedir, platform } from "node:os";
 import { join } from "node:path";
 import chalk from "chalk";
 import { getOrCreateAuthKeypair } from "../../lib/auth.js";
+import { loadCliConfig } from "../../lib/config.js";
 import {
 	type BagsCredentials,
 	loadCredentials,
@@ -124,7 +125,9 @@ export const migrateLegacyPlayCredentials = async (): Promise<void> => {
 
 	await saveCredentials(credentials);
 
-	const isJsonMode = process.argv.includes("--json");
+	const cliConfig = await loadCliConfig();
+	const isJsonMode =
+		process.argv.includes("--json") || cliConfig.output === "json";
 	const isQuiet =
 		process.argv.includes("--quiet") || process.argv.includes("-q");
 	if (!(isJsonMode || isQuiet)) {
