@@ -1,7 +1,9 @@
 import { spawn } from "node:child_process";
+import { readStream } from "../../utils/read-stream.js";
 import type { ListedSkill } from "./types.js";
 
-const ANSI_ESCAPE_PATTERN = /\u001b\[[0-9;]*m/g;
+// biome-ignore lint: ESC control patterns trip the regex-control rule in literal form.
+const ANSI_ESCAPE_PATTERN = new RegExp("\\u001b\\[[0-9;]*m", "g");
 const LINE_BREAK_PATTERN = /\r?\n/;
 const LEADING_WHITESPACE_PATTERN = /^\s*/;
 const SKILL_NAME_PATTERN = /^[a-z][a-z0-9-]*$/;
@@ -128,24 +130,6 @@ const runCommandCapture = async (
 	]);
 
 	return { exitCode, stderr, stdout };
-};
-
-const readStream = async (
-	stream: NodeJS.ReadableStream | null,
-): Promise<string> => {
-	if (!stream) {
-		return "";
-	}
-
-	return await new Promise((resolve, reject) => {
-		let output = "";
-		stream.setEncoding?.("utf8");
-		stream.on("data", (chunk) => {
-			output += String(chunk);
-		});
-		stream.on("error", reject);
-		stream.on("end", () => resolve(output));
-	});
 };
 
 export const listAvailableSkills = async (

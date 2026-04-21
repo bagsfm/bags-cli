@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { readFile } from "node:fs/promises";
 import { Command } from "commander";
 import { registerPlayCommands } from "../../src/play/index.ts";
 
@@ -35,4 +36,17 @@ test("registerPlayCommands labels heavy admin commands with [admin]", () => {
 
 	expect(patchCommand?.description()).toContain("[admin]");
 	expect(verifyCommand?.description()).toContain("[admin]");
+});
+
+test("registerPlayCommands wires info through registerInfoCommand", async () => {
+	const source = await readFile(
+		new URL("../../src/play/index.ts", import.meta.url),
+		"utf8",
+	);
+
+	expect(source).toContain(
+		'import { registerInfoCommand } from "./commands/info.js";',
+	);
+	expect(source).toContain("registerInfoCommand(play);");
+	expect(source).not.toContain('await import("./commands/info.js")');
 });

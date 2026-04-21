@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
-import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { readStream } from "../../utils/read-stream.js";
 import type { ExecuteInitDependencies } from "./types.js";
 
 type RunCommand = NonNullable<ExecuteInitDependencies["runCommand"]>;
@@ -33,24 +34,6 @@ const defaultRunCommand: RunCommand = async (command, args, directory) => {
 			stderr.trim() || `Command failed: ${command} ${args.join(" ")}`,
 		);
 	}
-};
-
-const readStream = async (
-	stream: NodeJS.ReadableStream | null,
-): Promise<string> => {
-	if (!stream) {
-		return "";
-	}
-
-	return await new Promise((resolve, reject) => {
-		let output = "";
-		stream.setEncoding?.("utf8");
-		stream.on("data", (chunk) => {
-			output += String(chunk);
-		});
-		stream.on("error", reject);
-		stream.on("end", () => resolve(output));
-	});
 };
 
 export const writeProjectFiles = async (

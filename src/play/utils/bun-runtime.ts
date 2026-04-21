@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { PlayCommandError } from "./errors.js";
+import { readStream } from "./read-stream.js";
 
 const getBunCandidateNames = (
 	platformName: NodeJS.Platform,
@@ -20,24 +21,6 @@ const getPathEntries = (env: NodeJS.ProcessEnv): readonly string[] => {
 	}
 
 	return pathValue.split(delimiter).filter((entry) => entry.length > 0);
-};
-
-const readStream = async (
-	stream: NodeJS.ReadableStream | null,
-): Promise<string> => {
-	if (!stream) {
-		return "";
-	}
-
-	return await new Promise((resolve, reject) => {
-		let output = "";
-		stream.setEncoding?.("utf8");
-		stream.on("data", (chunk) => {
-			output += String(chunk);
-		});
-		stream.on("error", reject);
-		stream.on("end", () => resolve(output));
-	});
 };
 
 export const buildBunLoaderSource = (entryPath: string): string => {

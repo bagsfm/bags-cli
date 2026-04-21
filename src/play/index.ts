@@ -18,6 +18,7 @@ import type { Command } from "commander";
 import { registerArtCommand } from "./commands/art.js";
 import { registerCompletionCommand } from "./commands/completion/index.js";
 import { registerDeploymentsCommand } from "./commands/deployments/index.js";
+import { registerInfoCommand } from "./commands/info.js";
 import { registerInitCommand } from "./commands/init/index.js";
 import { registerPluginsCommand } from "./commands/plugins/index.js";
 import { registerRunsCommand } from "./commands/runs/index.js";
@@ -25,14 +26,6 @@ import { registerSecretsCommand } from "./commands/secrets/index.js";
 import { registerWhoamiCommand } from "./commands/whoami.js";
 import { migrateLegacyPlayCredentials } from "./config/credentials-migrate.js";
 import { addExamplesAfter } from "./utils/help.js";
-
-interface DeferredInfoCommandOptions {
-	bagsApi?: string;
-	json?: boolean;
-	playApi?: string;
-	quiet?: boolean;
-	versions?: boolean;
-}
 
 interface DeferredBuildCommandOptions {
 	json?: boolean;
@@ -83,27 +76,9 @@ export const registerPlayCommands = (program: Command): void => {
 	registerCompletionCommand(play);
 	registerRunsCommand(play);
 	registerDeploymentsCommand(play);
+	registerInfoCommand(play);
 	registerPluginsCommand(play);
 	registerSecretsCommand(play);
-
-	const infoCommand = play
-		.command("info")
-		.argument("[appId]", "App ID or appId@version")
-		.description("Display Play App metadata")
-		.option("--versions", "List all published versions")
-		.action(async function (this: Command, appId?: string) {
-			const { executeInfo } = await import("./commands/info.js");
-			const globalOptions = this.optsWithGlobals<DeferredInfoCommandOptions>();
-			const localOptions = this.opts<{ versions?: boolean }>();
-			await executeInfo(appId, { ...globalOptions, ...localOptions });
-		});
-
-	addExamplesAfter(infoCommand, [
-		{ command: "bags play info" },
-		{ command: "bags play info fee-compounder" },
-		{ command: "bags play info fee-compounder@1.0.0" },
-		{ command: "bags play info fee-compounder --versions" },
-	]);
 
 	const buildCommand = play
 		.command("build")
