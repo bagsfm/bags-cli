@@ -6,8 +6,8 @@
  * - Credentials read via bags-cli's existing `loadCredentials()` instead
  *   of play-cli's `readCredentials()`.
  * - `User-Agent` set to `bags-cli/<version>` (per PLAY_INTEGRATION.md C19).
- * - `bags.toml` project overrides are deferred to Phase 4 — Phase 1 only
- *   ships `whoami`/`art`/`completion`, none of which need project context.
+ * - `bags.toml` project overrides are resolved through `readProjectOverrides()`
+ *   so Play commands can honor project-local API endpoints.
  *
  * @packageDocumentation
  */
@@ -16,6 +16,7 @@ import type { ClientResponse } from "hono/client";
 import { hc } from "hono/client";
 import { loadCredentials } from "../../lib/credentials.js";
 import { cliVersion } from "../../version.js";
+import { readProjectOverrides } from "../config/project.js";
 
 const DEFAULT_PLAY_API_URL = "https://api.play.bags.fm";
 const DEFAULT_BAGS_API_URL = "https://api.bags.fm";
@@ -194,20 +195,19 @@ export const resolveApiKey = async (
 };
 
 /**
- * Resolves client URLs and auth from CLI flags, env vars, and stored credentials.
+ * Resolves client URLs and auth from CLI flags, env vars, `bags.toml`, and
+ * stored credentials.
  *
  * Resolution order (highest priority first):
  *   1. CLI flag overrides (`--play-api`, `--bags-api`)
  *   2. Environment variables (`BAGS_PLAY_API_URL`, `BAGS_API_URL`)
- *   3. Built-in defaults
- *
- * Note: per-project `bags.toml` overrides (read via `smol-toml`) are deferred
- * to Phase 4 when the project-aware commands (`init`, `build`, `info`,
- * `publish`) land. Phase 1 commands do not need project context.
+ *   3. `bags.toml` overrides in the resolved project directory
+ *   4. Built-in defaults
  */
 export const resolveApiClientConfig = async (
 	overrides: ApiClientConfigOverrides = {},
 	env: ApiEnvironment = process.env,
+	projectDirectory?: string,
 ): Promise<ApiClientConfig> => {
 	const apiKey =
 		getOptionalValue(overrides.apiKey) ??
@@ -216,6 +216,7 @@ export const resolveApiClientConfig = async (
 	const adminToken =
 		getOptionalValue(overrides.adminToken) ??
 		getOptionalValue(env[PLAY_ADMIN_TOKEN_ENV_VAR]);
+	const projectOverrides = await readProjectOverrides(projectDirectory);
 
 	return {
 		adminToken,
@@ -223,10 +224,12 @@ export const resolveApiClientConfig = async (
 		bagsApiUrl:
 			getOptionalValue(overrides.bagsApiUrl) ??
 			getOptionalValue(env[BAGS_API_URL_ENV_VAR]) ??
+			getOptionalValue(projectOverrides.bagsApiUrl) ??
 			DEFAULT_BAGS_API_URL,
 		playApiUrl:
 			getOptionalValue(overrides.playApiUrl) ??
 			getOptionalValue(env[PLAY_API_URL_ENV_VAR]) ??
+			getOptionalValue(projectOverrides.playApiUrl) ??
 			DEFAULT_PLAY_API_URL,
 	};
 };

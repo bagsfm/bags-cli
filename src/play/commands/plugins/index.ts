@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import type { Command } from "commander";
-import { ApiError, callApi } from "../../api/client.js";
+import { ApiError, callApi, type PlayApiClient } from "../../api/client.js";
 import {
 	resolvePlayCommandUiState,
 	wrapPlayAction,
@@ -46,6 +46,70 @@ const printPluginsList = (
 		);
 	}
 	console.log();
+};
+
+interface RegisterPluginUiState {
+	readonly json: boolean;
+	readonly quiet: boolean;
+}
+
+interface RegisterPluginDependencies {
+	createSpinner?: typeof createSpinner;
+	getClient?: () => Promise<PlayApiClient>;
+	logger?: { info(message: string): void };
+	showError?: typeof showError;
+	writeJsonSuccess?: typeof writeJsonSuccess;
+}
+
+const defaultRegisterPluginLogger = {
+	info(message: string) {
+		console.log(message);
+	},
+};
+
+export const executeRegisterPlugin = async (
+	packageName: string,
+	ui: RegisterPluginUiState,
+	{
+		createSpinner: createSpinnerImpl = createSpinner,
+		getClient,
+		logger = defaultRegisterPluginLogger,
+		showError: showErrorImpl = showError,
+		writeJsonSuccess: writeJsonSuccessImpl = writeJsonSuccess,
+	}: RegisterPluginDependencies,
+): Promise<void> => {
+	if (!getClient) {
+		throw new Error("Missing Play client factory for plugin registration.");
+	}
+
+	const spinner = createSpinnerImpl(ui);
+
+	try {
+		spinner.start(`Registering ${packageName}...`);
+		const client = await getClient();
+		const result = await callApi(client.api.v1.admin.plugins.register.$post, {
+			json: { packageName },
+		});
+		spinner.stop();
+
+		if (ui.json) {
+			writeJsonSuccessImpl(result);
+			return;
+		}
+
+		logger.info(
+			`\n  Plugin registered: ${result.pluginId} v${result.version}\n`,
+		);
+		if (result.previousVersion) {
+			logger.info(`  Updated from v${result.previousVersion}`);
+		}
+		logger.info("");
+	} catch (error) {
+		spinner.stop();
+		showErrorImpl(error instanceof ApiError ? error.message : String(error), {
+			json: ui.json,
+		});
+	}
 };
 
 export const registerPluginsCommand = (parent: Command): void => {
@@ -176,6 +240,25 @@ export const registerPluginsCommand = (parent: Command): void => {
 		},
 	]);
 
+	const registerCommand = plugins
+		.command("register <packageName>")
+		.description("Register a plugin package [admin]")
+		.action(
+			wrapPlayAction(async (command, packageName: string) => {
+				const ui = await resolvePlayCommandUiState(command);
+				await executeRegisterPlugin(packageName, ui, {
+					getClient: async () =>
+						await getPlayClientForCommand(command, { requireAdmin: true }),
+				});
+			}),
+		);
+
+	addExamplesAfter(registerCommand, [
+		{
+			command: "bags play plugins register @bagsfm/play-bags-plugin",
+		},
+	]);
+
 	addExamplesAfter(plugins, [
 		{
 			description: "Browse available plugins",
@@ -184,6 +267,10 @@ export const registerPluginsCommand = (parent: Command): void => {
 		{
 			description: "View plugin actions",
 			command: "bags play plugins info bags-api",
+		},
+		{
+			description: "Register a plugin package [admin]",
+			command: "bags play plugins register @bagsfm/play-bags-plugin",
 		},
 	]);
 };
