@@ -5,7 +5,7 @@
  * `bags-cli` can scaffold projects without reaching back into the Play
  * monorepo at runtime.
  */
-/** biome-ignore-all lint/suspicious/noTemplateCurlyInString: <explanation> */
+/** biome-ignore-all lint/suspicious/noTemplateCurlyInString: to be determined */
 
 export const EMBEDDED_TEMPLATES: ReadonlyMap<string, string> = new Map([
 	[
