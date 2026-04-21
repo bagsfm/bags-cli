@@ -18,5 +18,6 @@ export default defineConfig({
 		"effect",
 		"zod",
 		"hono",
+		"smol-toml",
 	],
 });
