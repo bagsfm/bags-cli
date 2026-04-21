@@ -1,0 +1,49 @@
+/**
+ * {{PLUGIN_NAME}} plugin for Bags Play.
+ *
+ * @packageDocumentation
+ */
+
+import {
+  createActionFactories,
+  createPluginConfigAccessor,
+  createPluginManifest,
+  definePlugin,
+} from "@bagsfm/play-sdk";
+import { z } from "zod";
+import { exampleAction } from "./actions/example";
+
+/**
+ * Plugin-level config schema.
+ * Define any API keys or settings your plugin needs here.
+ */
+export const configSchema = z.object({
+  apiKey: z.string().describe("API key for the external service"),
+});
+
+/** TypeScript type for the plugin config. */
+export type {{PLUGIN_CONFIG_TYPE}} = z.infer<typeof configSchema>;
+
+/** Typed config accessor for action execute functions. */
+export const useConfig = createPluginConfigAccessor(configSchema);
+
+/** Runtime plugin object. */
+export const plugin = definePlugin("{{PLUGIN_ID}}", "{{PLUGIN_NAME}}")
+  .version("0.0.1")
+  .author("{{PLUGIN_AUTHOR}}")
+  .description("{{PLUGIN_DESCRIPTION}}")
+  .category("{{PLUGIN_CATEGORY}}")
+  .engines({ schema: "1.0.0" })
+  .configSchema(configSchema)
+  // Optional: plugin-scoped secrets (create with `bags secrets create NAME --plugin {{PLUGIN_ID}}`)
+  // .secrets({ apiKey: { secretId: "sec_xxx", overridable: true } })
+  .actions([exampleAction])
+  .build();
+
+/** Serializable manifest for the registry. */
+export const manifest = createPluginManifest(plugin);
+
+/** Typed action node factories for app developers. */
+export const actions = createActionFactories("{{PLUGIN_ID}}", {
+  example: exampleAction,
+});

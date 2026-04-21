@@ -1,0 +1,27 @@
+import { describe, expect, test } from "bun:test";
+import { validateApp } from "@bagsfm/play-sdk";
+import app from "../app";
+
+describe("app scaffold", () => {
+  test("exports a valid AppDefinition", () => {
+    expect(validateApp(app)).toEqual([]);
+  });
+
+  test("has version set", () => {
+    expect(app.version).toBe("1.0.0");
+  });
+
+  test("has correct trigger type", () => {
+    expect(app.trigger.type).toBe("cron");
+  });
+
+  test("has expected nodes", () => {
+    expect(app.nodes).toHaveLength(2);
+    expect(app.nodes.map((n) => n.id)).toEqual(["log-start", "save-state"]);
+  });
+
+  test("has expected edges", () => {
+    expect(app.edges).toHaveLength(1);
+    expect(app.edges[0]).toMatchObject({ source: "log-start", target: "save-state" });
+  });
+});

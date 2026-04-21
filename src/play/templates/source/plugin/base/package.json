@@ -1,0 +1,35 @@
+{
+  "name": "{{PLUGIN_PACKAGE_NAME}}",
+  "version": "0.0.1",
+  "description": "{{PLUGIN_DESCRIPTION}}",
+  "type": "module",
+  "main": "./src/plugin.ts",
+  "types": "./src/plugin.ts",
+  "exports": {
+    ".": {
+      "bun": "./src/plugin.ts",
+      "types": "./src/plugin.ts",
+      "import": "./dist/plugin.js"
+    }
+  },
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome check --write ."
+  },
+  "peerDependencies": {
+    "@bagsfm/play-sdk": "{{PLAY_SDK_VERSION}}"
+  },
+  "devDependencies": {
+    "@bagsfm/play-sdk": "{{PLAY_SDK_VERSION}}",
+    "@bagsfm/play-shared": "{{PLAY_SDK_VERSION}}",
+    "@types/bun": "{{BUN_TYPES_VERSION}}",
+    "typescript": "{{TYPESCRIPT_VERSION}}",
+    "zod": "^4.0.0",
+    "effect": "^3.0.0"
+  }
+}

@@ -1,0 +1,31 @@
+/**
+ * Example action for the {{PLUGIN_NAME}} plugin.
+ *
+ * Replace this with your actual action implementation.
+ *
+ * @packageDocumentation
+ */
+
+import { defineAction } from "@bagsfm/play-sdk";
+import { Effect } from "effect";
+import { z } from "zod";
+
+export const exampleAction = defineAction("example", "Example Action")
+  .description("An example action — replace with your implementation")
+  .config(
+    z.object({
+      message: z.string().describe("A message to process"),
+    })
+  )
+  // Optional: charge native SOL per run of this action (treasury + fixed lamports or dynamic compute)
+  // .fee({ treasury: "YourSolanaTreasuryAddressHere11111111111111111111", lamports: 1_000_000n })
+  .output(
+    z.object({
+      result: z.string().describe("The processed result"),
+    })
+  )
+  .execute((input) =>
+    Effect.succeed({
+      data: { result: `Processed: ${input.config.message}` },
+    })
+  );

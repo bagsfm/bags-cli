@@ -1,0 +1,24 @@
+import { createActionNode, cronTrigger, defineApp, expr } from "@bagsfm/play-sdk";
+
+const logStart = createActionNode("log-start", "core", "log")
+  .config({
+    message: expr.concat("Running {{APP_DISPLAY_NAME}} — scaffolded with bags init"),
+    level: "info",
+  })
+  .build();
+
+const saveState = createActionNode("save-state", "core", "state-set")
+  .config({
+    key: "lastRun",
+    value: expr.node("log-start", "timestamp"),
+  })
+  .build();
+
+export default defineApp("{{APP_NAME}}", "{{APP_DISPLAY_NAME}}")
+  .version("1.0.0")
+  .description("Scaffolded with bags init.")
+  .trigger(cronTrigger("0 * * * *"))
+  .node(logStart)
+  .node(saveState)
+  .connect("log-start", "save-state")
+  .build();
