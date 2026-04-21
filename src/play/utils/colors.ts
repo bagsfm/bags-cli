@@ -55,3 +55,18 @@ export const muted = (value: string): string => chalk.dim(value);
 
 /** Brand-green bullet character used in list rows (◆, ●, etc.). */
 export const bullet = (value: string): string => bagsGreen(value);
+
+/** Semantic status text used in summaries and lifecycle labels. */
+export const status = (
+	value: string,
+	tone: "muted" | "success" | "warning",
+): string => {
+	if (tone === "success") {
+		return chalk.green(value);
+	}
+	if (tone === "warning") {
+		return chalk.yellow(value);
+	}
+
+	return muted(value);
+};
