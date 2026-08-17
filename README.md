@@ -61,7 +61,6 @@ bags wallet balance
 - `bags partner` - partner config and claim flows
 - `bags pool` - pool lookup endpoints
 - `bags dexscreener` - check/create/pay Dexscreener orders
-- `bags incorporation` - incorporation payment and project workflows
 - `bags settings` - CLI defaults (`rpcUrl`, commitment, output mode)
 
 ## Interactive + Flags

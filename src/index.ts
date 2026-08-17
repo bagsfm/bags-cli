@@ -4,7 +4,6 @@ import { registerAuthCommands } from "./commands/auth.js";
 import { registerConfigCommands } from "./commands/config.js";
 import { registerDexscreenerCommands } from "./commands/dexscreener.js";
 import { registerFeesCommands } from "./commands/fees.js";
-import { registerIncorporationCommands } from "./commands/incorporation.js";
 import { registerLaunchCommands } from "./commands/launch.js";
 import { registerPartnerCommands } from "./commands/partner.js";
 import { registerPoolCommands } from "./commands/pool.js";
@@ -33,7 +32,6 @@ registerConfigCommands(program);
 registerPartnerCommands(program);
 registerPoolCommands(program);
 registerDexscreenerCommands(program);
-registerIncorporationCommands(program);
 registerSettingsCommands(program);
 
 async function main() {
