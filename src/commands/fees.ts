@@ -18,6 +18,14 @@ type MintOptions = {
   endTime?: string;
 };
 
+type GlobalFeedOptions = {
+  limit?: number;
+  before?: number;
+  minAmount?: number;
+  maxAmount?: number;
+  onlyFirstClaims?: boolean;
+};
+
 async function resolveMint(value?: string): Promise<PublicKey> {
   const mint = await flagOrPrompt(value, "Token mint:");
   return new PublicKey(mint);
@@ -165,6 +173,30 @@ export function registerFeesCommands(program: Command): void {
         const mint = await resolveMint(mintArg ?? options.mint);
         const { sdk } = await getSdkContext();
         const result = await (sdk as any).state.getTokenClaimStats(mint);
+        await printData(command, result);
+      }),
+    );
+
+  fees
+    .command("global-feed")
+    .description("Get the global claim feed across all tokens")
+    .option("--limit <n>", "Number of events to return (1-100)", Number)
+    .option("--before <unix>", "Only return events older than this unix timestamp, in seconds", Number)
+    .option("--min-amount <n>", "Lower bound on the raw claimed amount, in the event mint's base units", Number)
+    .option("--max-amount <n>", "Upper bound on the raw claimed amount, in the event mint's base units", Number)
+    .option("--only-first-claims", "Only return each wallet's first claim per token")
+    .action(
+      wrapAction(async (command, options: GlobalFeedOptions) => {
+        const { sdk } = await getSdkContext();
+
+        const query: Record<string, unknown> = {};
+        if (options.limit !== undefined) query.limit = options.limit;
+        if (options.before !== undefined) query.before = options.before;
+        if (options.minAmount !== undefined) query.minAmount = options.minAmount;
+        if (options.maxAmount !== undefined) query.maxAmount = options.maxAmount;
+        if (options.onlyFirstClaims) query.onlyFirstClaims = true;
+
+        const result = await (sdk as any).state.getGlobalClaimFeedV2(query);
         await printData(command, result);
       }),
     );
