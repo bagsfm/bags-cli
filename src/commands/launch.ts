@@ -46,6 +46,7 @@ type LaunchCreateOptions = {
 
 type FeedOptions = { limit?: number };
 type MintOptions = { mint?: string };
+type DammV2LaunchesOptions = { limit?: number; quoteMint?: string; cursor?: string };
 
 async function sendBundleWithTip(
   sdk: any,
@@ -341,6 +342,24 @@ export function registerLaunchCommands(program: Command): void {
       wrapAction(async (command, options: FeedOptions) => {
         const { sdk } = await getSdkContext();
         const result = await (sdk as any).state.getTokenLaunchFeed({ limit: options.limit ?? 20 });
+        await printData(command, result);
+      }),
+    );
+
+  launch
+    .command("damm-v2-launches")
+    .description("Get confirmed DAMM v2 direct launches")
+    .option("--limit <n>", "Number of items", Number)
+    .option("--quote-mint <address>", "Filter by quote mint")
+    .option("--cursor <id>", "Pagination cursor from a previous response's nextCursor")
+    .action(
+      wrapAction(async (command, options: DammV2LaunchesOptions) => {
+        const { sdk } = await getSdkContext();
+        const result = await (sdk as any).tokenLaunch.getDammV2Launches({
+          limit: options.limit,
+          quoteMint: options.quoteMint ? new PublicKey(options.quoteMint) : undefined,
+          cursor: options.cursor,
+        });
         await printData(command, result);
       }),
     );
