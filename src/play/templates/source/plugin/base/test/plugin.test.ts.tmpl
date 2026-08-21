@@ -1,0 +1,33 @@
+import { describe, expect, test } from "bun:test";
+import { testPlugin } from "@bagsfm/play-sdk";
+import { actions, manifest, plugin } from "../src/plugin";
+
+describe("{{PLUGIN_NAME}} plugin", () => {
+  test("plugin has correct metadata", () => {
+    expect(plugin.metadata.id).toBe("{{PLUGIN_ID}}");
+    expect(plugin.metadata.name).toBe("{{PLUGIN_NAME}}");
+  });
+
+  test("testPlugin validation returns no errors", () => {
+    const issues = testPlugin(plugin);
+    const errors = issues.filter((i) => i.type === "error");
+    expect(errors).toHaveLength(0);
+  });
+
+  test("manifest is valid", () => {
+    expect(manifest.pluginId).toBe("{{PLUGIN_ID}}");
+    expect(manifest.actions.length).toBeGreaterThan(0);
+  });
+
+  test("typed action factories exist", () => {
+    expect(typeof actions.example).toBe("function");
+  });
+
+  test("typed factory produces correct node shape", () => {
+    const node = actions.example("my-node")
+      .config({ message: "hello" })
+      .build();
+    expect(node.pluginId).toBe("{{PLUGIN_ID}}");
+    expect(node.actionId).toBe("example");
+  });
+});

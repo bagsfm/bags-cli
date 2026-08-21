@@ -1,0 +1,19 @@
+{
+  "name": "{{APP_NAME}}",
+  "version": "1.0.0",
+  "description": "Bags Play App scaffolded with bags init",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bags play build",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@bagsfm/play-bags-plugin": "latest",
+    "@bagsfm/play-sdk": "{{PLAY_SDK_VERSION}}"
+  },
+  "devDependencies": {
+    "@types/bun": "{{BUN_TYPES_VERSION}}",
+    "typescript": "{{TYPESCRIPT_VERSION}}"
+  }
+}

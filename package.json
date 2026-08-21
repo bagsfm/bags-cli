@@ -13,8 +13,9 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
+    "embed:play-templates": "tsx scripts/embed-play-templates.ts",
+    "build": "npm run embed:play-templates && tsup",
+    "dev": "npm run embed:play-templates && tsup --watch",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run typecheck && npm run build",
     "start": "node dist/index.js",
@@ -43,18 +44,28 @@
   },
   "dependencies": {
     "@bagsfm/bags-sdk": "^1.3.7",
+    "@bagsfm/play-engine": "file:../play.bags/packages/engine",
+    "@bagsfm/play-sdk": "file:../play.bags/packages/sdk",
+    "@bagsfm/play-shared": "file:../play.bags/packages/shared",
     "@inquirer/prompts": "^8.4.1",
     "@solana/web3.js": "^1.98.4",
     "bs58": "^6.0.0",
     "chalk": "^5.6.2",
     "cli-table3": "^0.6.5",
     "commander": "^14.0.3",
+    "cron-parser": "^5.5.0",
+    "hono": "4.12.9",
     "ora": "^9.3.0",
+    "smol-toml": "^1.6.1",
     "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
+    "@hono/zod-openapi": "^1.3.0",
+    "@types/bun": "^1.3.12",
     "@types/node": "^25.5.2",
+    "nats": "^2.29.3",
     "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   }
 }
