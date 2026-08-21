@@ -46,6 +46,7 @@ type LaunchCreateOptions = {
 
 type FeedOptions = { limit?: number };
 type MintOptions = { mint?: string };
+type GetLaunchOptions = { mint?: string };
 
 async function sendBundleWithTip(
   sdk: any,
@@ -354,6 +355,19 @@ export function registerLaunchCommands(program: Command): void {
         const mint = new PublicKey(await flagOrPrompt(options.mint, "Token mint:"));
         const { sdk } = await getSdkContext();
         const result = await (sdk as any).state.getTokenCreators(mint);
+        await printData(command, result);
+      }),
+    );
+
+  launch
+    .command("get")
+    .description("Get a token launch by mint")
+    .option("--mint <address>", "Token mint")
+    .action(
+      wrapAction(async (command, options: GetLaunchOptions) => {
+        const mint = new PublicKey(await flagOrPrompt(options.mint, "Token mint:"));
+        const { sdk } = await getSdkContext();
+        const result = await (sdk as any).tokenLaunch.getTokenLaunch(mint);
         await printData(command, result);
       }),
     );
