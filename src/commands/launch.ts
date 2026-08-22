@@ -46,6 +46,7 @@ type LaunchCreateOptions = {
 
 type FeedOptions = { limit?: number };
 type MintOptions = { mint?: string };
+type VaultClaimablesOptions = { wallet?: string };
 
 async function sendBundleWithTip(
   sdk: any,
@@ -354,6 +355,19 @@ export function registerLaunchCommands(program: Command): void {
         const mint = new PublicKey(await flagOrPrompt(options.mint, "Token mint:"));
         const { sdk } = await getSdkContext();
         const result = await (sdk as any).state.getTokenCreators(mint);
+        await printData(command, result);
+      }),
+    );
+
+  launch
+    .command("damm-v2-vault-claimables")
+    .description("Get partner/deployer DAMM v2 vault balances for a wallet")
+    .option("--wallet <address>", "Partner/deployer wallet")
+    .action(
+      wrapAction(async (command, options: VaultClaimablesOptions) => {
+        const wallet = new PublicKey(await flagOrPrompt(options.wallet, "Wallet:"));
+        const { sdk } = await getSdkContext();
+        const result = await (sdk as any).tokenLaunch.getDammV2VaultClaimables(wallet);
         await printData(command, result);
       }),
     );
