@@ -46,6 +46,7 @@ type LaunchCreateOptions = {
 
 type FeedOptions = { limit?: number };
 type MintOptions = { mint?: string };
+type ClaimVaultOptions = { kind?: string; wallet?: string; quoteMint?: string; skipConfirm?: boolean };
 
 async function sendBundleWithTip(
   sdk: any,
@@ -355,6 +356,38 @@ export function registerLaunchCommands(program: Command): void {
         const { sdk } = await getSdkContext();
         const result = await (sdk as any).state.getTokenCreators(mint);
         await printData(command, result);
+      }),
+    );
+
+  launch
+    .command("damm-v2-claim-vault")
+    .description("Claim a partner/deployer DAMM v2 vault to the local wallet")
+    .option("--kind <partner|deployer>", "Which aggregate vault to sweep")
+    .option("--quote-mint <address>", "Quote mint of the vault to sweep")
+    .option("--skip-confirm", "Skip confirmation")
+    .action(
+      wrapAction(async (command, options: ClaimVaultOptions) => {
+        const { sdk, connection } = await getSdkContext();
+        const { keypair, commitment } = await getLocalSigner();
+
+        const kindInput = await flagOrPrompt(options.kind, "Vault kind (partner/deployer):");
+        if (kindInput !== "partner" && kindInput !== "deployer") {
+          throw new Error("Kind must be 'partner' or 'deployer'.");
+        }
+        const quoteMint = new PublicKey(await flagOrPrompt(options.quoteMint, "Quote mint:"));
+
+        if (!options.skipConfirm) {
+          const ok = await promptConfirm(`Claim ${kindInput} vault for ${keypair.publicKey.toBase58()} (quote mint ${quoteMint.toBase58()})?`);
+          if (!ok) return;
+        }
+
+        const { transaction, claimable } = await (sdk as any).tokenLaunch.claimDammV2Vault({
+          kind: kindInput,
+          wallet: keypair.publicKey,
+          quoteMint,
+        });
+        const signature = await signAndSend(connection, commitment, transaction, keypair);
+        await printData(command, { signature, claimable });
       }),
     );
 }
