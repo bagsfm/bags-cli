@@ -46,6 +46,14 @@ type LaunchCreateOptions = {
 
 type FeedOptions = { limit?: number };
 type MintOptions = { mint?: string };
+type DammV2CreateTransactionOptions = {
+  tokenMint?: string;
+  quoteMint?: string;
+  metadataUrl?: string;
+  feeClaimerWallet?: string;
+  initialBuyQuoteAmount?: number;
+  partner?: string;
+};
 
 async function sendBundleWithTip(
   sdk: any,
@@ -354,6 +362,43 @@ export function registerLaunchCommands(program: Command): void {
         const mint = new PublicKey(await flagOrPrompt(options.mint, "Token mint:"));
         const { sdk } = await getSdkContext();
         const result = await (sdk as any).state.getTokenCreators(mint);
+        await printData(command, result);
+      }),
+    );
+
+  launch
+    .command("damm-v2-create-transaction")
+    .description("Build a DAMM v2 direct launch transaction bundle (does not sign or submit)")
+    .option("--token-mint <address>", "Mint from a previous 'launch create-token-info'")
+    .option("--quote-mint <address>", "Badged quote mint (see damm-v2-supported-quote-tokens)")
+    .option("--metadata-url <url>", "Metadata URI from a previous 'launch create-token-info'")
+    .option("--fee-claimer-wallet <address>", "Receives the 50% fee position NFT (defaults to the local wallet)")
+    .option("--initial-buy-quote-amount <n>", "Initial buy amount in quote mint base units", Number)
+    .option("--partner <address>", "Existing PartnerConfig wallet to attach")
+    .action(
+      wrapAction(async (command, options: DammV2CreateTransactionOptions) => {
+        const { sdk } = await getSdkContext();
+        const { keypair } = await getLocalSigner();
+
+        const tokenMint = new PublicKey(await flagOrPrompt(options.tokenMint, "Token mint:"));
+        const quoteMint = new PublicKey(await flagOrPrompt(options.quoteMint, "Quote mint:"));
+        const metadataUrl = await flagOrPrompt(options.metadataUrl, "Metadata URL:");
+        const feeClaimerWallet = await optionalFlagOrPrompt(
+          options.feeClaimerWallet,
+          "Fee claimer wallet (optional, defaults to local wallet):",
+        );
+        const partner = await optionalFlagOrPrompt(options.partner, "Partner wallet (optional):");
+
+        const result = await (sdk as any).tokenLaunch.createDammV2LaunchTransaction({
+          metadataUrl,
+          tokenMint,
+          wallet: keypair.publicKey,
+          quoteMint,
+          feeClaimerWallet: feeClaimerWallet ? new PublicKey(feeClaimerWallet) : undefined,
+          initialBuyQuoteAmount: options.initialBuyQuoteAmount,
+          partner: partner ? new PublicKey(partner) : undefined,
+        });
+
         await printData(command, result);
       }),
     );
