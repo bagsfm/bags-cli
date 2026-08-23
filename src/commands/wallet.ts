@@ -4,6 +4,7 @@ import { wrapAction } from "../lib/command.js";
 import { loadCliConfig } from "../lib/config.js";
 import { printData } from "../lib/output.js";
 import { flagOrPrompt } from "../lib/prompt.js";
+import { getSdkContext } from "../lib/sdk.js";
 import {
   BAGS_KEYPAIR_PATH,
 } from "../lib/paths.js";
@@ -28,6 +29,21 @@ type BalanceOptions = {
   rpc?: string;
   token?: string;
 };
+
+type LookupOptions = {
+  username?: string;
+  provider?: string;
+  chain?: string;
+};
+
+type LookupBulkOptions = {
+  items?: string;
+};
+
+function serializeWalletState(state: any): Record<string, unknown> {
+  const wallet = state.chain === "EVM" || state.wallet === null ? state.wallet : (state.wallet as PublicKey).toBase58();
+  return { ...state, wallet };
+}
 
 export function registerWalletCommands(program: Command): void {
   const wallet = program.command("wallet").description("Wallet management commands");
@@ -135,6 +151,40 @@ export function registerWalletCommands(program: Command): void {
           publicKey: kp.publicKey.toBase58(),
           balance: `${lamportsToSol(lamports)} SOL`,
         });
+      }),
+    );
+
+  wallet
+    .command("lookup")
+    .description("Look up a launch wallet by social username")
+    .option("--username <username>", "Social username")
+    .option("--provider <provider>", "Social provider (twitter, tiktok, kick, github)")
+    .option("--chain <chain>", "Chain to resolve the wallet on (SOL or EVM)", "SOL")
+    .action(
+      wrapAction(async (command, options: LookupOptions) => {
+        const username = await flagOrPrompt(options.username, "Username:");
+        const provider = await flagOrPrompt(options.provider, "Provider (twitter/tiktok/kick/github):");
+        const chain = (options.chain ?? "SOL").toUpperCase();
+        const { sdk } = await getSdkContext();
+        const state = await (sdk as any).state.getLaunchWalletV2(username, provider, chain as "SOL" | "EVM");
+        await printData(command, serializeWalletState(state));
+      }),
+    );
+
+  wallet
+    .command("lookup-bulk")
+    .description("Look up launch wallets for multiple social usernames")
+    .option("--items <json>", 'JSON array of {"username","provider","chain"?} (chain defaults to SOL)')
+    .action(
+      wrapAction(async (command, options: LookupBulkOptions) => {
+        const itemsInput = await flagOrPrompt(options.items, "Lookup items (JSON array):");
+        const items = JSON.parse(itemsInput);
+        if (!Array.isArray(items)) {
+          throw new Error("--items must be a JSON array.");
+        }
+        const { sdk } = await getSdkContext();
+        const results = await (sdk as any).state.getLaunchWalletV2Bulk(items);
+        await printData(command, (results as any[]).map(serializeWalletState));
       }),
     );
 }

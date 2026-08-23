@@ -6,6 +6,7 @@ import { BagsCredentials, clearCredentials, loadCredentials } from "../lib/crede
 import { log, printData } from "../lib/output.js";
 import { BAGS_KEYPAIR_PATH } from "../lib/paths.js";
 import { promptSecret } from "../lib/prompt.js";
+import { getSdkContext } from "../lib/sdk.js";
 import { deleteKeypair } from "../lib/wallet.js";
 import { maskApiKey } from "../utils/format.js";
 import { withSpinner } from "../utils/spinner.js";
@@ -97,6 +98,17 @@ export function registerAuthCommands(program: Command): void {
         }
         await log(command, chalk.green(`Logged out${options.all ? " and deleted keypair" : ""}.`));
         await printData(command, { loggedOut: true, keypairDeleted: Boolean(options.all) });
+      }),
+    );
+
+  auth
+    .command("whoami")
+    .description("Show the Bags user account for the current API key")
+    .action(
+      wrapAction(async (command) => {
+        const { sdk } = await getSdkContext();
+        const { user } = await (sdk as any).auth.me();
+        await printData(command, user);
       }),
     );
 }
