@@ -46,6 +46,7 @@ type LaunchCreateOptions = {
 
 type FeedOptions = { limit?: number };
 type MintOptions = { mint?: string };
+type GetLaunchBulkOptions = { mints?: string };
 type GetLaunchOptions = { mint?: string };
 type DammV2LaunchesOptions = { limit?: number; quoteMint?: string; cursor?: string };
 
@@ -387,6 +388,24 @@ export function registerLaunchCommands(program: Command): void {
         const mint = new PublicKey(await flagOrPrompt(options.mint, "Token mint:"));
         const { sdk } = await getSdkContext();
         const result = await (sdk as any).tokenLaunch.getTokenLaunch(mint);
+        await printData(command, result);
+      }),
+    );
+
+  launch
+    .command("get-bulk")
+    .description("Get token launches for up to 100 mints")
+    .option("--mints <addresses>", "Comma-separated token mints (1-100, unique)")
+    .action(
+      wrapAction(async (command, options: GetLaunchBulkOptions) => {
+        const mintsInput = await flagOrPrompt(options.mints, "Token mints (comma-separated):");
+        const mints = mintsInput
+          .split(",")
+          .map((mint) => mint.trim())
+          .filter(Boolean)
+          .map((mint) => new PublicKey(mint));
+        const { sdk } = await getSdkContext();
+        const result = await (sdk as any).tokenLaunch.getTokenLaunchesBulk(mints);
         await printData(command, result);
       }),
     );
