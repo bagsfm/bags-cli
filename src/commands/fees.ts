@@ -18,6 +18,21 @@ type MintOptions = {
   endTime?: string;
 };
 
+type GlobalFeedOptions = {
+  limit?: number;
+  before?: number;
+  minAmount?: number;
+  maxAmount?: number;
+  onlyFirstClaims?: boolean;
+};
+
+type StatsV4Options = {
+  mint?: string;
+  wallet?: string;
+  includeForceClaim?: boolean;
+  includeUser?: boolean;
+};
+
 async function resolveMint(value?: string): Promise<PublicKey> {
   const mint = await flagOrPrompt(value, "Token mint:");
   return new PublicKey(mint);
@@ -156,6 +171,17 @@ export function registerFeesCommands(program: Command): void {
     );
 
   fees
+    .command("leaderboard")
+    .description("Get the top tokens by lifetime fees")
+    .action(
+      wrapAction(async (command) => {
+        const { sdk } = await getSdkContext();
+        const result = await (sdk as any).state.getTopTokensByLifetimeFees();
+        await printData(command, result);
+      }),
+    );
+
+  fees
     .command("stats")
     .description("Get token claim stats")
     .argument("[mint]", "Token mint address")
@@ -165,6 +191,59 @@ export function registerFeesCommands(program: Command): void {
         const mint = await resolveMint(mintArg ?? options.mint);
         const { sdk } = await getSdkContext();
         const result = await (sdk as any).state.getTokenClaimStats(mint);
+        await printData(command, result);
+      }),
+    );
+
+  fees
+    .command("global-feed")
+    .description("Get the global claim feed across all tokens")
+    .option("--limit <n>", "Number of events to return (1-100)", Number)
+    .option("--before <unix>", "Only return events older than this unix timestamp, in seconds", Number)
+    .option("--min-amount <n>", "Lower bound on the raw claimed amount, in the event mint's base units", Number)
+    .option("--max-amount <n>", "Upper bound on the raw claimed amount, in the event mint's base units", Number)
+    .option("--only-first-claims", "Only return each wallet's first claim per token")
+    .action(
+      wrapAction(async (command, options: GlobalFeedOptions) => {
+        const { sdk } = await getSdkContext();
+
+        const query: Record<string, unknown> = {};
+        if (options.limit !== undefined) query.limit = options.limit;
+        if (options.before !== undefined) query.before = options.before;
+        if (options.minAmount !== undefined) query.minAmount = options.minAmount;
+        if (options.maxAmount !== undefined) query.maxAmount = options.maxAmount;
+        if (options.onlyFirstClaims) query.onlyFirstClaims = true;
+
+        const result = await (sdk as any).state.getGlobalClaimFeedV2(query);
+        await printData(command, result);
+      }),
+    );
+
+  fees
+    .command("stats-v4")
+    .description("Get token claim stats with per-mint amounts and USD values")
+    .argument("[mint]", "Token mint address")
+    .option("--mint <address>", "Token mint")
+    .option("--wallet <address>", "Wallet to aggregate claims for, across every token it claimed on")
+    .option("--include-force-claim", "Include forced claims in the totals")
+    .option("--include-user", "Include the claimer profile on each row")
+    .action(
+      wrapAction(async (command, mintArg: string | undefined, options: StatsV4Options) => {
+        const mintInput = mintArg ?? options.mint;
+        const { sdk } = await getSdkContext();
+
+        const query: Record<string, unknown> = {
+          includeForceClaim: options.includeForceClaim ?? false,
+          includeUser: options.includeUser ?? false,
+        };
+
+        if (!mintInput && options.wallet) {
+          query.wallet = new PublicKey(options.wallet);
+        } else {
+          query.tokenMint = await resolveMint(mintInput);
+        }
+
+        const result = await (sdk as any).state.getTokenClaimStatsV4(query);
         await printData(command, result);
       }),
     );
