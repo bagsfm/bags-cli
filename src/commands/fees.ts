@@ -156,6 +156,17 @@ export function registerFeesCommands(program: Command): void {
     );
 
   fees
+    .command("leaderboard")
+    .description("Get the top tokens by lifetime fees")
+    .action(
+      wrapAction(async (command) => {
+        const { sdk } = await getSdkContext();
+        const result = await (sdk as any).state.getTopTokensByLifetimeFees();
+        await printData(command, result);
+      }),
+    );
+
+  fees
     .command("stats")
     .description("Get token claim stats")
     .argument("[mint]", "Token mint address")
