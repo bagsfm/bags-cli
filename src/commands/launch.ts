@@ -47,6 +47,18 @@ type LaunchCreateOptions = {
 type FeedOptions = { limit?: number };
 type MintOptions = { mint?: string };
 type ClaimVaultOptions = { kind?: string; wallet?: string; quoteMint?: string; skipConfirm?: boolean };
+type DammV2CreateTransactionOptions = {
+  tokenMint?: string;
+  quoteMint?: string;
+  metadataUrl?: string;
+  feeClaimerWallet?: string;
+  initialBuyQuoteAmount?: number;
+  partner?: string;
+};
+type VaultClaimablesOptions = { wallet?: string };
+type GetLaunchBulkOptions = { mints?: string };
+type GetLaunchOptions = { mint?: string };
+type DammV2LaunchesOptions = { limit?: number; quoteMint?: string; cursor?: string };
 
 async function sendBundleWithTip(
   sdk: any,
@@ -347,6 +359,24 @@ export function registerLaunchCommands(program: Command): void {
     );
 
   launch
+    .command("damm-v2-launches")
+    .description("Get confirmed DAMM v2 direct launches")
+    .option("--limit <n>", "Number of items", Number)
+    .option("--quote-mint <address>", "Filter by quote mint")
+    .option("--cursor <id>", "Pagination cursor from a previous response's nextCursor")
+    .action(
+      wrapAction(async (command, options: DammV2LaunchesOptions) => {
+        const { sdk } = await getSdkContext();
+        const result = await (sdk as any).tokenLaunch.getDammV2Launches({
+          limit: options.limit,
+          quoteMint: options.quoteMint ? new PublicKey(options.quoteMint) : undefined,
+          cursor: options.cursor,
+        });
+        await printData(command, result);
+      }),
+    );
+
+  launch
     .command("creators")
     .description("Get creators for a token mint")
     .option("--mint <address>", "Token mint")
@@ -355,6 +385,98 @@ export function registerLaunchCommands(program: Command): void {
         const mint = new PublicKey(await flagOrPrompt(options.mint, "Token mint:"));
         const { sdk } = await getSdkContext();
         const result = await (sdk as any).state.getTokenCreators(mint);
+        await printData(command, result);
+      }),
+    );
+
+  launch
+    .command("get")
+    .description("Get a token launch by mint")
+    .option("--mint <address>", "Token mint")
+    .action(
+      wrapAction(async (command, options: GetLaunchOptions) => {
+        const mint = new PublicKey(await flagOrPrompt(options.mint, "Token mint:"));
+        const { sdk } = await getSdkContext();
+        const result = await (sdk as any).tokenLaunch.getTokenLaunch(mint);
+        await printData(command, result);
+      }),
+    );
+
+  launch
+    .command("get-bulk")
+    .description("Get token launches for up to 100 mints")
+    .option("--mints <addresses>", "Comma-separated token mints (1-100, unique)")
+    .action(
+      wrapAction(async (command, options: GetLaunchBulkOptions) => {
+        const mintsInput = await flagOrPrompt(options.mints, "Token mints (comma-separated):");
+        const mints = mintsInput
+          .split(",")
+          .map((mint) => mint.trim())
+          .filter(Boolean)
+          .map((mint) => new PublicKey(mint));
+        const { sdk } = await getSdkContext();
+        const result = await (sdk as any).tokenLaunch.getTokenLaunchesBulk(mints);
+        await printData(command, result);
+      }),
+    );
+
+  launch
+    .command("damm-v2-supported-quote-tokens")
+    .description("Get quote mints usable for DAMM v2 direct launches")
+    .action(
+      wrapAction(async (command) => {
+        const { sdk } = await getSdkContext();
+        const result = await (sdk as any).tokenLaunch.getDammV2SupportedQuoteTokens();
+        await printData(command, result);
+      }),
+    );
+
+  launch
+    .command("damm-v2-vault-claimables")
+    .description("Get partner/deployer DAMM v2 vault balances for a wallet")
+    .option("--wallet <address>", "Partner/deployer wallet")
+    .action(
+      wrapAction(async (command, options: VaultClaimablesOptions) => {
+        const wallet = new PublicKey(await flagOrPrompt(options.wallet, "Wallet:"));
+        const { sdk } = await getSdkContext();
+        const result = await (sdk as any).tokenLaunch.getDammV2VaultClaimables(wallet);
+        await printData(command, result);
+      }),
+    );
+
+  launch
+    .command("damm-v2-create-transaction")
+    .description("Build a DAMM v2 direct launch transaction bundle (does not sign or submit)")
+    .option("--token-mint <address>", "Mint from a previous 'launch create-token-info'")
+    .option("--quote-mint <address>", "Badged quote mint (see damm-v2-supported-quote-tokens)")
+    .option("--metadata-url <url>", "Metadata URI from a previous 'launch create-token-info'")
+    .option("--fee-claimer-wallet <address>", "Receives the 50% fee position NFT (defaults to the local wallet)")
+    .option("--initial-buy-quote-amount <n>", "Initial buy amount in quote mint base units", Number)
+    .option("--partner <address>", "Existing PartnerConfig wallet to attach")
+    .action(
+      wrapAction(async (command, options: DammV2CreateTransactionOptions) => {
+        const { sdk } = await getSdkContext();
+        const { keypair } = await getLocalSigner();
+
+        const tokenMint = new PublicKey(await flagOrPrompt(options.tokenMint, "Token mint:"));
+        const quoteMint = new PublicKey(await flagOrPrompt(options.quoteMint, "Quote mint:"));
+        const metadataUrl = await flagOrPrompt(options.metadataUrl, "Metadata URL:");
+        const feeClaimerWallet = await optionalFlagOrPrompt(
+          options.feeClaimerWallet,
+          "Fee claimer wallet (optional, defaults to local wallet):",
+        );
+        const partner = await optionalFlagOrPrompt(options.partner, "Partner wallet (optional):");
+
+        const result = await (sdk as any).tokenLaunch.createDammV2LaunchTransaction({
+          metadataUrl,
+          tokenMint,
+          wallet: keypair.publicKey,
+          quoteMint,
+          feeClaimerWallet: feeClaimerWallet ? new PublicKey(feeClaimerWallet) : undefined,
+          initialBuyQuoteAmount: options.initialBuyQuoteAmount,
+          partner: partner ? new PublicKey(partner) : undefined,
+        });
+
         await printData(command, result);
       }),
     );

@@ -9,6 +9,7 @@ import { registerPartnerCommands } from "./commands/partner.js";
 import { registerPoolCommands } from "./commands/pool.js";
 import { registerRobinhoodCommands } from "./commands/robinhood.js";
 import { registerSettingsCommands } from "./commands/settings.js";
+import { registerSolanaCommands } from "./commands/solana.js";
 import { registerTradeCommands } from "./commands/trade.js";
 import { registerWalletCommands } from "./commands/wallet.js";
 import { handleCliError } from "./utils/errors.js";
@@ -35,6 +36,7 @@ registerPoolCommands(program);
 registerRobinhoodCommands(program);
 registerDexscreenerCommands(program);
 registerSettingsCommands(program);
+registerSolanaCommands(program);
 
 async function main() {
   try {
