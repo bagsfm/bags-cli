@@ -1,3 +1,4 @@
+import { BAGS_FEE_SHARE_ADMIN_MAX_CLAIMERS_NON_LUT, waitForSlotsToPass } from "@bagsfm/bags-sdk";
 import { PublicKey } from "@solana/web3.js";
 import { Command } from "commander";
 import { wrapAction } from "../lib/command.js";
@@ -81,15 +82,35 @@ export function registerConfigCommands(program: Command): void {
           if (!ok) return;
         }
 
-        const result = await (sdk as any).feeShareAdmin.createUpdateConfigTransactions({
+        let additionalLookupTables: PublicKey[] | undefined;
+        if (feeClaimers.length > BAGS_FEE_SHARE_ADMIN_MAX_CLAIMERS_NON_LUT) {
+          const lutResult = await (sdk as any).feeShareAdmin.getUpdateConfigLookupTableTransactions({
+            payer: keypair.publicKey,
+            feeClaimers,
+          });
+          if (lutResult) {
+            await signAndSend(connection, commitment, lutResult.creationTransaction, keypair);
+            await waitForSlotsToPass(connection, commitment, 1);
+            for (const tx of lutResult.extendTransactions) {
+              await signAndSend(connection, commitment, tx, keypair);
+            }
+            additionalLookupTables = lutResult.lutAddresses;
+          }
+        }
+
+        const txsWithBlockhash = await (sdk as any).feeShareAdmin.getUpdateConfigTransactions({
           payer: keypair.publicKey,
           baseMint: mint,
           feeClaimers,
+          additionalLookupTables,
         });
 
-        const signatures = Array.isArray(result.transactions)
-          ? await signAndSendAll(connection, commitment, result.transactions, keypair)
-          : [];
+        const signatures = await signAndSendAll(
+          connection,
+          commitment,
+          (txsWithBlockhash as any[]).map((tx) => tx.transaction),
+          keypair,
+        );
         await printData(command, { signatures });
       }),
     );
@@ -112,12 +133,13 @@ export function registerConfigCommands(program: Command): void {
           if (!ok) return;
         }
 
-        const tx = await (sdk as any).feeShareAdmin.createTransferAdminTransaction({
+        const { transaction } = await (sdk as any).feeShareAdmin.getTransferAdminTransaction({
           payer: keypair.publicKey,
+          currentAdmin: keypair.publicKey,
           baseMint: mint,
           newAdmin,
         });
-        const signature = await signAndSend(connection, commitment, tx, keypair);
+        const signature = await signAndSend(connection, commitment, transaction, keypair);
         await printData(command, { signature });
       }),
     );
