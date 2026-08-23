@@ -27,22 +27,41 @@ export function registerPartnerCommands(program: Command): void {
           const ok = await promptConfirm(`Create partner config for ${keypair.publicKey.toBase58()}?`);
           if (!ok) return;
         }
-        const tx = await (sdk as any).partner.createPartnerConfigTransaction(keypair.publicKey);
-        const signature = await signAndSend(connection, commitment, tx, keypair);
+        const { transaction } = await (sdk as any).partner.getPartnerConfigCreationTransaction(keypair.publicKey);
+        const signature = await signAndSend(connection, commitment, transaction, keypair);
         await printData(command, { signature });
       }),
     );
 
   partner
-    .command("stats")
-    .description("Get partner stats")
-    .option("--partner <pubkey>", "Partner wallet pubkey")
+    .command("config")
+    .description("Get the on-chain partner config account")
+    .option("--partner <pubkey>", "Partner wallet pubkey (default local)")
     .action(
       wrapAction(async (command, options: PartnerOptions) => {
         const { sdk } = await getSdkContext();
-        const { keypair } = await getLocalSigner();
-        const partnerWallet = new PublicKey(await flagOrPrompt(options.partner, "Partner wallet (default local):"));
-        const stats = await (sdk as any).partner.getPartnerStats(partnerWallet ?? keypair.publicKey);
+        const partnerWallet = options.partner ? new PublicKey(options.partner) : (await getLocalSigner()).keypair.publicKey;
+        const config = await (sdk as any).partner.getPartnerConfig(partnerWallet);
+        await printData(command, {
+          partner: config.partner.toBase58(),
+          bump: config.bump,
+          bps: config.bps,
+          totalClaimedFees: config.totalClaimedFees.toString(),
+          totalAccumulatedFees: config.totalAccumulatedFees.toString(),
+          totalLifetimeAccumulatedFees: config.totalLifetimeAccumulatedFees.toString(),
+        });
+      }),
+    );
+
+  partner
+    .command("stats")
+    .description("Get partner claim stats")
+    .option("--partner <pubkey>", "Partner wallet pubkey (default local)")
+    .action(
+      wrapAction(async (command, options: PartnerOptions) => {
+        const { sdk } = await getSdkContext();
+        const partnerWallet = options.partner ? new PublicKey(options.partner) : (await getLocalSigner()).keypair.publicKey;
+        const stats = await (sdk as any).partner.getPartnerConfigClaimStats(partnerWallet);
         await printData(command, stats);
       }),
     );
@@ -61,8 +80,13 @@ export function registerPartnerCommands(program: Command): void {
           if (!ok) return;
         }
 
-        const txs = await (sdk as any).partner.getPartnerClaimTransactions(keypair.publicKey);
-        const signatures = await signAndSendAll(connection, commitment, txs as any[], keypair);
+        const txsWithBlockhash = await (sdk as any).partner.getPartnerConfigClaimTransactions(keypair.publicKey);
+        const signatures = await signAndSendAll(
+          connection,
+          commitment,
+          (txsWithBlockhash as any[]).map((tx) => tx.transaction),
+          keypair,
+        );
         await printData(command, { signatures });
       }),
     );
