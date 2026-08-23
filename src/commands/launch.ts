@@ -409,4 +409,15 @@ export function registerLaunchCommands(program: Command): void {
         await printData(command, result);
       }),
     );
+
+  launch
+    .command("damm-v2-supported-quote-tokens")
+    .description("Get quote mints usable for DAMM v2 direct launches")
+    .action(
+      wrapAction(async (command) => {
+        const { sdk } = await getSdkContext();
+        const result = await (sdk as any).tokenLaunch.getDammV2SupportedQuoteTokens();
+        await printData(command, result);
+      }),
+    );
 }
