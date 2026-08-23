@@ -46,6 +46,7 @@ type LaunchCreateOptions = {
 
 type FeedOptions = { limit?: number };
 type MintOptions = { mint?: string };
+type VaultClaimablesOptions = { wallet?: string };
 type GetLaunchBulkOptions = { mints?: string };
 type GetLaunchOptions = { mint?: string };
 type DammV2LaunchesOptions = { limit?: number; quoteMint?: string; cursor?: string };
@@ -417,6 +418,19 @@ export function registerLaunchCommands(program: Command): void {
       wrapAction(async (command) => {
         const { sdk } = await getSdkContext();
         const result = await (sdk as any).tokenLaunch.getDammV2SupportedQuoteTokens();
+        await printData(command, result);
+      }),
+    );
+
+  launch
+    .command("damm-v2-vault-claimables")
+    .description("Get partner/deployer DAMM v2 vault balances for a wallet")
+    .option("--wallet <address>", "Partner/deployer wallet")
+    .action(
+      wrapAction(async (command, options: VaultClaimablesOptions) => {
+        const wallet = new PublicKey(await flagOrPrompt(options.wallet, "Wallet:"));
+        const { sdk } = await getSdkContext();
+        const result = await (sdk as any).tokenLaunch.getDammV2VaultClaimables(wallet);
         await printData(command, result);
       }),
     );
