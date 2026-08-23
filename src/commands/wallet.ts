@@ -41,10 +41,8 @@ type LookupBulkOptions = {
 };
 
 function serializeWalletState(state: any): Record<string, unknown> {
-  return {
-    ...state,
-    wallet: state.chain === "EVM" ? state.wallet : (state.wallet as PublicKey).toBase58(),
-  };
+  const wallet = state.chain === "EVM" || state.wallet === null ? state.wallet : (state.wallet as PublicKey).toBase58();
+  return { ...state, wallet };
 }
 
 export function registerWalletCommands(program: Command): void {

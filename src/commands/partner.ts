@@ -40,8 +40,7 @@ export function registerPartnerCommands(program: Command): void {
     .action(
       wrapAction(async (command, options: PartnerOptions) => {
         const { sdk } = await getSdkContext();
-        const { keypair } = await getLocalSigner();
-        const partnerWallet = options.partner ? new PublicKey(options.partner) : keypair.publicKey;
+        const partnerWallet = options.partner ? new PublicKey(options.partner) : (await getLocalSigner()).keypair.publicKey;
         const config = await (sdk as any).partner.getPartnerConfig(partnerWallet);
         await printData(command, {
           partner: config.partner.toBase58(),
@@ -61,8 +60,7 @@ export function registerPartnerCommands(program: Command): void {
     .action(
       wrapAction(async (command, options: PartnerOptions) => {
         const { sdk } = await getSdkContext();
-        const { keypair } = await getLocalSigner();
-        const partnerWallet = options.partner ? new PublicKey(options.partner) : keypair.publicKey;
+        const partnerWallet = options.partner ? new PublicKey(options.partner) : (await getLocalSigner()).keypair.publicKey;
         const stats = await (sdk as any).partner.getPartnerConfigClaimStats(partnerWallet);
         await printData(command, stats);
       }),
