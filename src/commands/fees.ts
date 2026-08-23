@@ -18,6 +18,13 @@ type MintOptions = {
   endTime?: string;
 };
 
+type StatsV4Options = {
+  mint?: string;
+  wallet?: string;
+  includeForceClaim?: boolean;
+  includeUser?: boolean;
+};
+
 async function resolveMint(value?: string): Promise<PublicKey> {
   const mint = await flagOrPrompt(value, "Token mint:");
   return new PublicKey(mint);
@@ -176,6 +183,35 @@ export function registerFeesCommands(program: Command): void {
         const mint = await resolveMint(mintArg ?? options.mint);
         const { sdk } = await getSdkContext();
         const result = await (sdk as any).state.getTokenClaimStats(mint);
+        await printData(command, result);
+      }),
+    );
+
+  fees
+    .command("stats-v4")
+    .description("Get token claim stats with per-mint amounts and USD values")
+    .argument("[mint]", "Token mint address")
+    .option("--mint <address>", "Token mint")
+    .option("--wallet <address>", "Wallet to aggregate claims for, across every token it claimed on")
+    .option("--include-force-claim", "Include forced claims in the totals")
+    .option("--include-user", "Include the claimer profile on each row")
+    .action(
+      wrapAction(async (command, mintArg: string | undefined, options: StatsV4Options) => {
+        const mintInput = mintArg ?? options.mint;
+        const { sdk } = await getSdkContext();
+
+        const query: Record<string, unknown> = {
+          includeForceClaim: options.includeForceClaim ?? false,
+          includeUser: options.includeUser ?? false,
+        };
+
+        if (!mintInput && options.wallet) {
+          query.wallet = new PublicKey(options.wallet);
+        } else {
+          query.tokenMint = await resolveMint(mintInput);
+        }
+
+        const result = await (sdk as any).state.getTokenClaimStatsV4(query);
         await printData(command, result);
       }),
     );
