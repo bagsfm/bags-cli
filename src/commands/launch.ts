@@ -54,6 +54,10 @@ type DammV2CreateTransactionOptions = {
   initialBuyQuoteAmount?: number;
   partner?: string;
 };
+type VaultClaimablesOptions = { wallet?: string };
+type GetLaunchBulkOptions = { mints?: string };
+type GetLaunchOptions = { mint?: string };
+type DammV2LaunchesOptions = { limit?: number; quoteMint?: string; cursor?: string };
 
 async function sendBundleWithTip(
   sdk: any,
@@ -354,6 +358,24 @@ export function registerLaunchCommands(program: Command): void {
     );
 
   launch
+    .command("damm-v2-launches")
+    .description("Get confirmed DAMM v2 direct launches")
+    .option("--limit <n>", "Number of items", Number)
+    .option("--quote-mint <address>", "Filter by quote mint")
+    .option("--cursor <id>", "Pagination cursor from a previous response's nextCursor")
+    .action(
+      wrapAction(async (command, options: DammV2LaunchesOptions) => {
+        const { sdk } = await getSdkContext();
+        const result = await (sdk as any).tokenLaunch.getDammV2Launches({
+          limit: options.limit,
+          quoteMint: options.quoteMint ? new PublicKey(options.quoteMint) : undefined,
+          cursor: options.cursor,
+        });
+        await printData(command, result);
+      }),
+    );
+
+  launch
     .command("creators")
     .description("Get creators for a token mint")
     .option("--mint <address>", "Token mint")
@@ -362,6 +384,61 @@ export function registerLaunchCommands(program: Command): void {
         const mint = new PublicKey(await flagOrPrompt(options.mint, "Token mint:"));
         const { sdk } = await getSdkContext();
         const result = await (sdk as any).state.getTokenCreators(mint);
+        await printData(command, result);
+      }),
+    );
+
+  launch
+    .command("get")
+    .description("Get a token launch by mint")
+    .option("--mint <address>", "Token mint")
+    .action(
+      wrapAction(async (command, options: GetLaunchOptions) => {
+        const mint = new PublicKey(await flagOrPrompt(options.mint, "Token mint:"));
+        const { sdk } = await getSdkContext();
+        const result = await (sdk as any).tokenLaunch.getTokenLaunch(mint);
+        await printData(command, result);
+      }),
+    );
+
+  launch
+    .command("get-bulk")
+    .description("Get token launches for up to 100 mints")
+    .option("--mints <addresses>", "Comma-separated token mints (1-100, unique)")
+    .action(
+      wrapAction(async (command, options: GetLaunchBulkOptions) => {
+        const mintsInput = await flagOrPrompt(options.mints, "Token mints (comma-separated):");
+        const mints = mintsInput
+          .split(",")
+          .map((mint) => mint.trim())
+          .filter(Boolean)
+          .map((mint) => new PublicKey(mint));
+        const { sdk } = await getSdkContext();
+        const result = await (sdk as any).tokenLaunch.getTokenLaunchesBulk(mints);
+        await printData(command, result);
+      }),
+    );
+
+  launch
+    .command("damm-v2-supported-quote-tokens")
+    .description("Get quote mints usable for DAMM v2 direct launches")
+    .action(
+      wrapAction(async (command) => {
+        const { sdk } = await getSdkContext();
+        const result = await (sdk as any).tokenLaunch.getDammV2SupportedQuoteTokens();
+        await printData(command, result);
+      }),
+    );
+
+  launch
+    .command("damm-v2-vault-claimables")
+    .description("Get partner/deployer DAMM v2 vault balances for a wallet")
+    .option("--wallet <address>", "Partner/deployer wallet")
+    .action(
+      wrapAction(async (command, options: VaultClaimablesOptions) => {
+        const wallet = new PublicKey(await flagOrPrompt(options.wallet, "Wallet:"));
+        const { sdk } = await getSdkContext();
+        const result = await (sdk as any).tokenLaunch.getDammV2VaultClaimables(wallet);
         await printData(command, result);
       }),
     );
