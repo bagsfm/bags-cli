@@ -28,6 +28,11 @@ type FeeClaimerInput = {
   bps: number;
 };
 
+type DividendConstituentInput = {
+  mint: string;
+  bps: number;
+};
+
 type LaunchCreateOptions = {
   name?: string;
   symbol?: string;
@@ -41,6 +46,7 @@ type LaunchCreateOptions = {
   feeClaimers?: string;
   partner?: string;
   partnerConfig?: string;
+  dividendProfile?: string;
   skipConfirm?: boolean;
 };
 
@@ -54,6 +60,7 @@ type DammV2CreateTransactionOptions = {
   feeClaimerWallet?: string;
   initialBuyQuoteAmount?: number;
   partner?: string;
+  dividendProfile?: string;
 };
 type VaultClaimablesOptions = { wallet?: string };
 type GetLaunchBulkOptions = { mints?: string };
@@ -98,6 +105,17 @@ function parseFeeClaimers(raw?: string): FeeClaimerInput[] {
   const parsed = JSON.parse(raw) as FeeClaimerInput[];
   if (!Array.isArray(parsed)) {
     throw new Error("--fee-claimers must be a JSON array.");
+  }
+  return parsed;
+}
+
+function parseDividendProfile(raw?: string): DividendConstituentInput[] | undefined {
+  if (!raw) {
+    return undefined;
+  }
+  const parsed = JSON.parse(raw) as DividendConstituentInput[];
+  if (!Array.isArray(parsed)) {
+    throw new Error("--dividend-profile must be a JSON array.");
   }
   return parsed;
 }
@@ -211,6 +229,7 @@ export function registerLaunchCommands(program: Command): void {
     .option("--fee-claimers <json>", "JSON array of fee claimers")
     .option("--partner <pubkey>", "Partner wallet")
     .option("--partner-config <pubkey>", "Partner config PDA")
+    .option("--dividend-profile <json>", "JSON array of dividend constituents, e.g. '[{\"mint\":\"...\",\"bps\":10000}]' (bps must sum to 10000)")
     .option("--skip-confirm", "Skip final confirmation")
     .action(
       wrapAction(async (command, options: LaunchCreateOptions) => {
@@ -237,6 +256,7 @@ export function registerLaunchCommands(program: Command): void {
         const feeClaimersInput = options.feeClaimers
           ? parseFeeClaimers(options.feeClaimers)
           : await buildFeeClaimersInteractive();
+        const dividendProfile = parseDividendProfile(options.dividendProfile);
 
         if (!options.skipConfirm) {
           let summary = `Launch ${name} (${symbol}) with initial buy ${initialBuy} lamports from ${keypair.publicKey.toBase58()}`;
@@ -335,6 +355,7 @@ export function registerLaunchCommands(program: Command): void {
           launchWallet: keypair.publicKey,
           initialBuyLamports: initialBuy,
           configKey: configResult.meteoraConfigKey,
+          dividendProfile: dividendProfile?.map((entry) => ({ mint: new PublicKey(entry.mint), bps: entry.bps })),
         });
         const signature = await signAndSend(connection, commitment, launchTx, keypair);
         await printData(command, {
@@ -453,6 +474,7 @@ export function registerLaunchCommands(program: Command): void {
     .option("--fee-claimer-wallet <address>", "Receives the 50% fee position NFT (defaults to the local wallet)")
     .option("--initial-buy-quote-amount <n>", "Initial buy amount in quote mint base units", Number)
     .option("--partner <address>", "Existing PartnerConfig wallet to attach")
+    .option("--dividend-profile <json>", "JSON array of dividend constituents, e.g. '[{\"mint\":\"...\",\"bps\":10000}]' (bps must sum to 10000)")
     .action(
       wrapAction(async (command, options: DammV2CreateTransactionOptions) => {
         const { sdk } = await getSdkContext();
@@ -466,6 +488,7 @@ export function registerLaunchCommands(program: Command): void {
           "Fee claimer wallet (optional, defaults to local wallet):",
         );
         const partner = await optionalFlagOrPrompt(options.partner, "Partner wallet (optional):");
+        const dividendProfile = parseDividendProfile(options.dividendProfile);
 
         const result = await (sdk as any).tokenLaunch.createDammV2LaunchTransaction({
           metadataUrl,
@@ -475,6 +498,7 @@ export function registerLaunchCommands(program: Command): void {
           feeClaimerWallet: feeClaimerWallet ? new PublicKey(feeClaimerWallet) : undefined,
           initialBuyQuoteAmount: options.initialBuyQuoteAmount,
           partner: partner ? new PublicKey(partner) : undefined,
+          dividendProfile: dividendProfile?.map((entry) => ({ mint: new PublicKey(entry.mint), bps: entry.bps })),
         });
 
         await printData(command, result);

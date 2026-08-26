@@ -3,6 +3,7 @@ import { registerSetupCommand } from "./commands/setup.js";
 import { registerAuthCommands } from "./commands/auth.js";
 import { registerConfigCommands } from "./commands/config.js";
 import { registerDexscreenerCommands } from "./commands/dexscreener.js";
+import { registerDividendsCommands } from "./commands/dividends.js";
 import { registerFeesCommands } from "./commands/fees.js";
 import { registerLaunchCommands } from "./commands/launch.js";
 import { registerPartnerCommands } from "./commands/partner.js";
@@ -37,6 +38,7 @@ registerRobinhoodCommands(program);
 registerDexscreenerCommands(program);
 registerSettingsCommands(program);
 registerSolanaCommands(program);
+registerDividendsCommands(program);
 
 async function main() {
   try {
