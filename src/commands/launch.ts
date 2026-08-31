@@ -448,7 +448,7 @@ export function registerLaunchCommands(program: Command): void {
     .command("damm-v2-create-transaction")
     .description("Build a DAMM v2 direct launch transaction bundle (does not sign or submit)")
     .option("--token-mint <address>", "Mint from a previous 'launch create-token-info'")
-    .option("--quote-mint <address>", "Badged quote mint (see damm-v2-supported-quote-tokens)")
+    .option("--quote-mint <address>", "Quote mint eligible at build time - badged and in the Jupiter trending-stocks whitelist (see damm-v2-supported-quote-tokens)")
     .option("--metadata-url <url>", "Metadata URI from a previous 'launch create-token-info'")
     .option("--fee-claimer-wallet <address>", "Receives the 50% fee position NFT (defaults to the local wallet)")
     .option("--initial-buy-quote-amount <n>", "Initial buy amount in quote mint base units", Number)
