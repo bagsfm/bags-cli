@@ -160,6 +160,8 @@ export function registerTradeCommands(program: Command): void {
           signature,
           quote,
           computeUnitLimit: swap.computeUnitLimit,
+          feeMint: swap.feeMint,
+          feeSide: swap.feeSide,
           feeLamports: swap.feeLamports,
           provider: swap.provider,
         });
