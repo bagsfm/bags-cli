@@ -24,6 +24,8 @@ type GlobalFeedOptions = {
   minAmount?: number;
   maxAmount?: number;
   onlyFirstClaims?: boolean;
+  sort?: string;
+  cursor?: string;
 };
 
 type StatsV4Options = {
@@ -199,10 +201,12 @@ export function registerFeesCommands(program: Command): void {
     .command("global-feed")
     .description("Get the global claim feed across all tokens")
     .option("--limit <n>", "Number of events to return (1-100)", Number)
-    .option("--before <unix>", "Only return events older than this unix timestamp, in seconds", Number)
+    .option("--before <unix>", "Only return events older than this unix timestamp, in seconds (sort=time only)", Number)
     .option("--min-amount <n>", "Lower bound on the raw claimed amount, in the event mint's base units", Number)
     .option("--max-amount <n>", "Upper bound on the raw claimed amount, in the event mint's base units", Number)
     .option("--only-first-claims", "Only return each wallet's first claim per token")
+    .option("--sort <time|amount>", "Sort by event time (default) or USD value of the claim")
+    .option("--cursor <cursor>", "Opaque page cursor from a previous response's nextCursor (sort=amount only)")
     .action(
       wrapAction(async (command, options: GlobalFeedOptions) => {
         const { sdk } = await getSdkContext();
@@ -213,6 +217,8 @@ export function registerFeesCommands(program: Command): void {
         if (options.minAmount !== undefined) query.minAmount = options.minAmount;
         if (options.maxAmount !== undefined) query.maxAmount = options.maxAmount;
         if (options.onlyFirstClaims) query.onlyFirstClaims = true;
+        if (options.sort !== undefined) query.sort = options.sort;
+        if (options.cursor !== undefined) query.cursor = options.cursor;
 
         const result = await (sdk as any).state.getGlobalClaimFeedV2(query);
         await printData(command, result);
