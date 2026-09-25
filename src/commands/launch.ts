@@ -432,6 +432,18 @@ export function registerLaunchCommands(program: Command): void {
     );
 
   launch
+    .command("supported-quote-tokens")
+    .description("Get quote mints usable for native (any-token) DBC and DAMM v2 direct launches")
+    .option("--flow <dbc|damm_v2_direct>", "Only return capabilities for this flow")
+    .action(
+      wrapAction(async (command, options: { flow?: string }) => {
+        const { sdk } = await getSdkContext();
+        const result = await (sdk as any).tokenLaunch.getSupportedQuoteTokens(options.flow);
+        await printData(command, result);
+      }),
+    );
+
+  launch
     .command("damm-v2-vault-claimables")
     .description("Get partner/deployer DAMM v2 vault balances for a wallet")
     .option("--wallet <address>", "Partner/deployer wallet")
@@ -478,6 +490,75 @@ export function registerLaunchCommands(program: Command): void {
         });
 
         await printData(command, result);
+      }),
+    );
+
+  launch
+    .command("create-quote-dbc")
+    .description("Build a native quote DBC launch transaction plan (any reviewed quote mint, not just SOL; does not sign or submit)")
+    .option("--token-mint <address>", "Mint from a previous 'launch create-token-info'")
+    .option("--fee-share-config <address>", "Fee share config to attach to this launch")
+    .option("--quote-mint <address>", "Quote mint to launch against (see 'launch supported-quote-tokens')")
+    .option("--config-key <address>", "Reviewed DBC pool config to launch against")
+    .option("--metadata-url <url>", "Metadata URI from a previous 'launch create-token-info'")
+    .option("--initial-buy-quote-raw <amount>", "Initial buy amount in raw quote mint base units")
+    .action(
+      wrapAction(async (command, options: {
+        tokenMint?: string; feeShareConfig?: string; quoteMint?: string; configKey?: string; metadataUrl?: string; initialBuyQuoteRaw?: string;
+      }) => {
+        const { sdk } = await getSdkContext();
+        const { keypair } = await getLocalSigner();
+
+        const tokenMint = new PublicKey(await flagOrPrompt(options.tokenMint, "Token mint:"));
+        const feeShareConfig = new PublicKey(await flagOrPrompt(options.feeShareConfig, "Fee share config:"));
+        const quoteMint = new PublicKey(await flagOrPrompt(options.quoteMint, "Quote mint:"));
+        const configKey = new PublicKey(await flagOrPrompt(options.configKey, "DBC pool config key:"));
+        const metadataUrl = await flagOrPrompt(options.metadataUrl, "Metadata URL:");
+
+        const plan = await (sdk as any).tokenLaunch.createQuoteDbcLaunchTransaction({
+          tokenMint,
+          wallet: keypair.publicKey,
+          feeShareConfig,
+          quoteMint,
+          configKey,
+          metadataUrl,
+          initialBuyQuoteRaw: options.initialBuyQuoteRaw,
+        });
+
+        await printData(command, plan);
+      }),
+    );
+
+  launch
+    .command("create-quote-damm-v2")
+    .description("Build a native quote DAMM v2 direct launch transaction plan (any reviewed quote mint, not just SOL; does not sign or submit)")
+    .option("--token-mint <address>", "Mint from a previous 'launch create-token-info'")
+    .option("--fee-share-config <address>", "Fee share config to attach to this launch")
+    .option("--quote-mint <address>", "Quote mint to launch against (see 'launch supported-quote-tokens')")
+    .option("--metadata-url <url>", "Metadata URI from a previous 'launch create-token-info'")
+    .option("--initial-buy-quote-raw <amount>", "Initial buy amount in raw quote mint base units")
+    .action(
+      wrapAction(async (command, options: {
+        tokenMint?: string; feeShareConfig?: string; quoteMint?: string; metadataUrl?: string; initialBuyQuoteRaw?: string;
+      }) => {
+        const { sdk } = await getSdkContext();
+        const { keypair } = await getLocalSigner();
+
+        const tokenMint = new PublicKey(await flagOrPrompt(options.tokenMint, "Token mint:"));
+        const feeShareConfig = new PublicKey(await flagOrPrompt(options.feeShareConfig, "Fee share config:"));
+        const quoteMint = new PublicKey(await flagOrPrompt(options.quoteMint, "Quote mint:"));
+        const metadataUrl = await flagOrPrompt(options.metadataUrl, "Metadata URL:");
+
+        const plan = await (sdk as any).tokenLaunch.createQuoteDammV2LaunchTransaction({
+          tokenMint,
+          wallet: keypair.publicKey,
+          feeShareConfig,
+          quoteMint,
+          metadataUrl,
+          initialBuyQuoteRaw: options.initialBuyQuoteRaw,
+        });
+
+        await printData(command, plan);
       }),
     );
 

@@ -5,7 +5,7 @@ import { wrapAction } from "../lib/command.js";
 import { printData, printTable } from "../lib/output.js";
 import { flagOrPrompt, flagOrPromptNumber, promptConfirm } from "../lib/prompt.js";
 import { getLocalSigner } from "../lib/signer.js";
-import { signAndSendAll } from "../lib/tx.js";
+import { signAndSendAll, signAndSendQuotePlan } from "../lib/tx.js";
 import { lamportsToSol, shortAddress } from "../utils/format.js";
 
 type MintOptions = {
@@ -216,6 +216,66 @@ export function registerFeesCommands(program: Command): void {
 
         const result = await (sdk as any).state.getGlobalClaimFeedV2(query);
         await printData(command, result);
+      }),
+    );
+
+  fees
+    .command("quote-positions")
+    .description("List claimable native quote fee positions/holdings for a wallet, across every base mint it has a role in")
+    .option("--wallet <address>", "Wallet to check (defaults to local wallet)")
+    .action(
+      wrapAction(async (command, options: { wallet?: string }) => {
+        const { sdk } = await getSdkContext();
+        const wallet = options.wallet ? new PublicKey(options.wallet) : (await getLocalSigner()).keypair.publicKey;
+        const result = await (sdk as any).tokenLaunch.getQuoteClaimablePositions(wallet);
+        await printData(command, result);
+      }),
+    );
+
+  fees
+    .command("quote-position")
+    .description("Get the claimable native quote fee position/holding for a wallet, scoped to a single base mint")
+    .argument("[mint]", "Token mint address")
+    .option("--mint <address>", "Token mint")
+    .option("--wallet <address>", "Wallet to check (defaults to local wallet)")
+    .action(
+      wrapAction(async (command, mintArg: string | undefined, options: { mint?: string; wallet?: string }) => {
+        const mint = await resolveMint(mintArg ?? options.mint);
+        const { sdk } = await getSdkContext();
+        const wallet = options.wallet ? new PublicKey(options.wallet) : (await getLocalSigner()).keypair.publicKey;
+        const result = await (sdk as any).tokenLaunch.getQuoteClaimablePosition(wallet, mint);
+        await printData(command, result);
+      }),
+    );
+
+  fees
+    .command("claim-quote")
+    .description("Claim native quote fees or a holding balance for a token mint (fee-sponsored; only the claim itself needs local funds)")
+    .argument("[mint]", "Token mint address")
+    .option("--mint <address>", "Token mint")
+    .option("--quote-mint <address>", "Quote mint to claim, when the config supports more than one")
+    .option("--skip-confirm", "Skip transaction confirmation")
+    .action(
+      wrapAction(async (command, mintArg: string | undefined, options: MintOptions & { quoteMint?: string }) => {
+        const mint = await resolveMint(mintArg ?? options.mint);
+        const { sdk, connection } = await getSdkContext();
+        const { keypair, commitment } = await getLocalSigner();
+
+        if (!options.skipConfirm) {
+          const ok = await promptConfirm(`Claim native quote fees for ${mint.toBase58()}?`);
+          if (!ok) {
+            return;
+          }
+        }
+
+        const plan = await (sdk as any).tokenLaunch.createQuoteClaimTransaction({
+          feeClaimer: keypair.publicKey,
+          tokenMint: mint,
+          quoteMint: options.quoteMint ? new PublicKey(options.quoteMint) : undefined,
+        });
+
+        const { signatures, readiness } = await signAndSendQuotePlan(connection, commitment, keypair, plan);
+        await printData(command, { mint: mint.toBase58(), signatures, readiness });
       }),
     );
 
