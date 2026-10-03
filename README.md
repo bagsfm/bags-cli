@@ -59,6 +59,7 @@ bags wallet balance
 - `bags launch` - full token launch workflow
 - `bags config` - fee share config creation/update/admin transfer
 - `bags partner` - partner config and claim flows
+- `bags bags-payout` - payout token status, cashout, history and claims
 - `bags pool` - pool lookup endpoints
 - `bags dexscreener` - check/create/pay Dexscreener orders
 - `bags settings` - CLI defaults (`rpcUrl`, commitment, output mode)
