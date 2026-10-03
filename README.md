@@ -61,6 +61,7 @@ bags wallet balance
 - `bags partner` - partner config and claim flows
 - `bags pool` - pool lookup endpoints
 - `bags dexscreener` - check/create/pay Dexscreener orders
+- `bags bags-pay` - BagsPay coin mapping, status, and distribution history (`token`, `token-bulk`, `status`, `history`)
 - `bags settings` - CLI defaults (`rpcUrl`, commitment, output mode)
 
 ## Interactive + Flags
