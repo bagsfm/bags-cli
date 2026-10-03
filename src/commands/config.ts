@@ -13,6 +13,8 @@ type ConfigOptions = {
   feeClaimers?: string;
   partner?: string;
   newAdmin?: string;
+  payoutMethod?: string;
+  payoutUsername?: string;
   skipConfirm?: boolean;
 };
 
@@ -24,6 +26,23 @@ function parseClaimers(raw?: string): Array<{ user: PublicKey; userBps: number }
   return parsed.map((x) => ({ user: new PublicKey(x.user), userBps: x.userBps }));
 }
 
+const PAYOUT_METHODS = ["venmo", "cashapp", "xmoney"];
+
+function parsePayoutCashout(options: ConfigOptions): { method: string; username: string } | undefined {
+  if (options.payoutMethod === undefined && options.payoutUsername === undefined) return undefined;
+  if (!options.payoutMethod || !options.payoutUsername) {
+    throw new Error("--payout-method and --payout-username must be provided together.");
+  }
+  if (!PAYOUT_METHODS.includes(options.payoutMethod)) {
+    throw new Error(`--payout-method must be one of: ${PAYOUT_METHODS.join(", ")}.`);
+  }
+  const username = options.payoutUsername.trim();
+  if (username.length < 1 || username.length > 64) {
+    throw new Error("--payout-username must be between 1 and 64 characters.");
+  }
+  return { method: options.payoutMethod, username };
+}
+
 export function registerConfigCommands(program: Command): void {
   const config = program.command("config").description("Fee share configuration");
 
@@ -33,11 +52,14 @@ export function registerConfigCommands(program: Command): void {
     .option("--mint <address>", "Base mint")
     .option("--fee-claimers <json>", "JSON array [{user,userBps}]")
     .option("--partner <pubkey>", "Partner wallet")
+    .option("--payout-method <method>", "Payout cashout method: venmo, cashapp, xmoney (required when the payout wallet is the sole claimer)")
+    .option("--payout-username <username>", "Payout cashout username (1-64 characters)")
     .option("--skip-confirm", "Skip confirmation")
     .action(
       wrapAction(async (command, options: ConfigOptions) => {
         const mint = new PublicKey(await flagOrPrompt(options.mint, "Base mint:"));
         const feeClaimers = parseClaimers(options.feeClaimers);
+        const payoutCashout = parsePayoutCashout(options);
         const { sdk, connection } = await getSdkContext();
         const { keypair, commitment } = await getLocalSigner();
 
@@ -51,6 +73,7 @@ export function registerConfigCommands(program: Command): void {
           baseMint: mint,
           feeClaimers,
           partner: options.partner ? new PublicKey(options.partner) : undefined,
+          payoutCashout,
         });
 
         const signatures = Array.isArray(result.transactions)
@@ -69,11 +92,14 @@ export function registerConfigCommands(program: Command): void {
     .description("Update fee share config as admin")
     .option("--mint <address>", "Base mint")
     .option("--fee-claimers <json>", "JSON array [{user,userBps}]")
+    .option("--payout-method <method>", "Payout cashout method: venmo, cashapp, xmoney (required when the payout wallet is the sole claimer)")
+    .option("--payout-username <username>", "Payout cashout username (1-64 characters)")
     .option("--skip-confirm", "Skip confirmation")
     .action(
       wrapAction(async (command, options: ConfigOptions) => {
         const mint = new PublicKey(await flagOrPrompt(options.mint, "Base mint:"));
         const feeClaimers = parseClaimers(options.feeClaimers);
+        const payoutCashout = parsePayoutCashout(options);
         const { sdk, connection } = await getSdkContext();
         const { keypair, commitment } = await getLocalSigner();
 
@@ -103,6 +129,7 @@ export function registerConfigCommands(program: Command): void {
           baseMint: mint,
           feeClaimers,
           additionalLookupTables,
+          payoutCashout,
         });
 
         const signatures = await signAndSendAll(

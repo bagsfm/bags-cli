@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { registerSetupCommand } from "./commands/setup.js";
 import { registerAuthCommands } from "./commands/auth.js";
+import { registerBagsPayoutCommands } from "./commands/bags-payout.js";
 import { registerConfigCommands } from "./commands/config.js";
 import { registerDexscreenerCommands } from "./commands/dexscreener.js";
 import { registerFeesCommands } from "./commands/fees.js";
@@ -32,6 +33,7 @@ registerTradeCommands(program);
 registerLaunchCommands(program);
 registerConfigCommands(program);
 registerPartnerCommands(program);
+registerBagsPayoutCommands(program);
 registerPoolCommands(program);
 registerRobinhoodCommands(program);
 registerDexscreenerCommands(program);
