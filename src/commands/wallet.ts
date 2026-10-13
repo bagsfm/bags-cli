@@ -158,12 +158,12 @@ export function registerWalletCommands(program: Command): void {
     .command("lookup")
     .description("Look up a launch wallet by social username")
     .option("--username <username>", "Social username")
-    .option("--provider <provider>", "Social provider (twitter, tiktok, kick, github)")
+    .option("--provider <provider>", "Social provider (twitter, tiktok, kick, github, domain)")
     .option("--chain <chain>", "Chain to resolve the wallet on (SOL or EVM)", "SOL")
     .action(
       wrapAction(async (command, options: LookupOptions) => {
         const username = await flagOrPrompt(options.username, "Username:");
-        const provider = await flagOrPrompt(options.provider, "Provider (twitter/tiktok/kick/github):");
+        const provider = await flagOrPrompt(options.provider, "Provider (twitter/tiktok/kick/github/domain):");
         const chain = (options.chain ?? "SOL").toUpperCase();
         const { sdk } = await getSdkContext();
         const state = await (sdk as any).state.getLaunchWalletV2(username, provider, chain as "SOL" | "EVM");
