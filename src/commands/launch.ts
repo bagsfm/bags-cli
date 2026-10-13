@@ -16,7 +16,7 @@ import chalk from "chalk";
 import { confirm, input, select } from "@inquirer/prompts";
 import { shortAddress } from "../utils/format.js";
 
-const SOCIAL_PROVIDERS = ["twitter", "github", "kick", "tiktok"] as const;
+const SOCIAL_PROVIDERS = ["twitter", "github", "kick", "tiktok", "domain"] as const;
 type SocialProvider = (typeof SOCIAL_PROVIDERS)[number];
 const MAX_CLAIMERS = 100;
 const TOTAL_BPS = 10000;
